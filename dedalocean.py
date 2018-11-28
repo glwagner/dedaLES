@@ -35,6 +35,10 @@ def tanhstep(z, z0, d):
 def mixedlayerN(z, dmix, Nmix, Ndeep):
     return Nmix + (Ndeep-Nmix)*tanhstep(z, -dmix, -0.2*dmix)
 
+def addparams(problem, **params):
+    for k, v in params.items():
+        problem.parameters[k] = v
+        
 class OceanModel():
     def __init__(self,
         nx = 128, 
@@ -46,12 +50,9 @@ class OceanModel():
         f = 1e-4,       # Coriolis parameters [s⁻¹]
         κ = 1.43e-7,    # Diffusivity [m²/s]
         ν = 1e-6,       # Kinematic viscosity [m²/s]
-        Bz = 0.0,       # Buoyancy gradient [s⁻²]
-        bflux = 0.0,    # Buoyancy flux [s⁻²]
-        ):
+        **params):
 
         # Create bases and domain
-        start_init_time = time.time()
         xbasis = de.Fourier('x', nx, interval=(-Lx/2, Lx/2), dealias=3/2)
         ybasis = de.Fourier('y', ny, interval=(-Ly/2, Ly/2), dealias=3/2)
         zbasis = de.Chebyshev('z', nz, interval=(-Lz, 0), dealias=3/2)
@@ -73,16 +74,13 @@ class OceanModel():
         self.f = f
         self.κ = κ
         self.ν = ν
-        self.Bz = Bz
 
         # 3D rotating Boussinesq hydrodynamics
         problem = de.IVP(domain, variables=['p', 'b', 'u', 'v', 'w', 'bz', 'uz', 'vz', 'wz'], time='t')
 
-        problem.parameters['κ'] = κ         # diffusivity
-        problem.parameters['ν'] = ν         # kinematic viscosity
-        problem.parameters['f'] = f         # Coriolis parameter
-        problem.parameters['Bz'] = Bz       # background (unstable) buoyancy gradient
-        problem.parameters['bflux'] = bflux # background (unstable) buoyancy gradient
+        addparams(problem, κ=κ, ν=ν, f=f, **params)
+        for k, v in params.items():
+            setattr(self, k, v)
 
         # Momentum equations
         problem.add_equation("dt(u) - f*v - ν*(dx(dx(u)) + dy(dy(u)) + dz(uz)) + dx(p) = - u*dx(u) - v*dy(u) - w*uz")
@@ -98,12 +96,11 @@ class OceanModel():
 
         self.problem = problem
 
-        end_init_time = time.time()
-        logger.info('Initialization time: %f' %(end_init_time-start_init_time))
-
     def build_solver(self, timestepper=de.timesteppers.RK443):
+
+        start_build_time = time.time()
         solver = self.problem.build_solver(timestepper)
-        logger.info('Solver built')
+        logger.info('Solver built. (t = %f) ' %(time.time()-start_init_time)))
 
         self.solver = solver
 
