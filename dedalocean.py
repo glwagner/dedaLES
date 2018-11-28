@@ -94,6 +94,8 @@ class OceanModel():
         problem.add_equation("vz - dz(v) = 0")
         problem.add_equation("wz - dz(w) = 0")
 
+        self.problem.add_bc("integ_z(p) = 0", condition="(nx == 0) and (ny == 0)")
+
         self.problem = problem
 
     def build_solver(self, timestepper=de.timesteppers.RK443):
@@ -152,6 +154,40 @@ class OceanModel():
             logger.info('Run time: %.2f sec' %(end_run_time-start_run_time))
             logger.info('Run time: %f cpu-hr' %((end_run_time-start_run_time) / hour * self.domain.dist.comm_cart.size))
 
+    def nopenetration_top(self):
+        self.problem.add_bc("right(w) = 0", condition="(nx != 0) or (ny != 0)")
+
+    def nopenetration_bottom(self):
+        self.problem.add_bc("left(w) = 0")
+
+    def nopenetration_topandbottom(self):
+        self.nopenetration_top()
+        self.nopenetration_bottom()
+
+    def noslip_top(self):
+        self.problem.add_bc("right(u) = 0")
+        self.problem.add_bc("right(v) = 0")
+
+    def noslip_bottom(self):
+        self.problem.add_bc("left(u) = 0")
+        self.problem.add_bc("left(v) = 0")
+
+    def noslip_topandbottom(self):
+        self.noslip_top()
+        self.noslip_bottom()
+
+    def freeslip_top(self):
+        self.problem.add_bc("right(uz) = 0")
+        self.problem.add_bc("right(vz) = 0")
+
+    def freeslip_bottom(self):
+        self.problem.add_bc("left(uz) = 0")
+        self.problem.add_bc("left(vz) = 0")
+
+    def freeslip_topandbottom(self):
+        self.freeslip_top()
+        self.freeslip_bottom()
+        
 
 class DeepConvectionModel(OceanModel):
     def __init__(self,
@@ -164,20 +200,15 @@ class DeepConvectionModel(OceanModel):
         f = 1e-4,       # Coriolis parameters [s⁻¹]
         κ = 1.43e-7,    # Diffusivity [m²/s]
         ν = 1e-6,       # Kinematic viscosity [m²/s]
-        bflux = 0.0,      # Buoyancy gradient [s⁻²]
+        bflux = 0.0,    # Buoyancy gradient [s⁻²]
         ):
 
         OceanModel.__init__(self, nx=nx, ny=ny, nz=nz, Lx=Lx, Ly=Ly, Lz=Lz, f=f, κ=κ, ν=ν, bflux=bflux)
 
-        self.problem.add_bc("left(bz) = bflux")
-        self.problem.add_bc("left(u) = 0")
-        self.problem.add_bc("left(v) = 0")
-        self.problem.add_bc("left(w) = 0")
-        self.problem.add_bc("right(b) = 0")
-        self.problem.add_bc("right(u) = 0")
-        self.problem.add_bc("right(v) = 0")
-        self.problem.add_bc("right(w) = 0", condition="(nx != 0) or (ny != 0)")
-        self.problem.add_bc("integ_z(p) = 0", condition="(nx == 0) and (ny == 0)")
+        self.problem.add_bc("left(bz) = 0")
+        self.problem.add_bc("right(b) = bflux")
+        self.nopenetration_topandbottom()
+        self.freeslip_topandbottom()
 
         self.build_solver()
 
@@ -198,15 +229,10 @@ class RayleighBernardConvection(OceanModel):
 
         OceanModel.__init__(self, nx=nx, ny=ny, nz=nz, Lx=Lx, Ly=Ly, Lz=Lz, f=f, κ=κ, ν=ν, Bz=Bz)
 
+        self.nopenetration_topandbottom()
+        self.noslip_topandbottom()
         self.problem.add_bc("left(b) = -left(Bz*z)")
-        self.problem.add_bc("left(u) = 0")
-        self.problem.add_bc("left(v) = 0")
-        self.problem.add_bc("left(w) = 0")
         self.problem.add_bc("right(b) = -right(Bz*z)")
-        self.problem.add_bc("right(u) = 0")
-        self.problem.add_bc("right(v) = 0")
-        self.problem.add_bc("right(w) = 0", condition="(nx != 0) or (ny != 0)")
-        self.problem.add_bc("integ_z(p) = 0", condition="(nx == 0) and (ny == 0)")
 
         self.build_solver()
         
