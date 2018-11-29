@@ -50,6 +50,7 @@ class OceanModel():
         f = 1e-4,       # Coriolis parameters [s⁻¹]
         κ = 1.43e-7,    # Diffusivity [m²/s]
         ν = 1e-6,       # Kinematic viscosity [m²/s]
+        closure = None, # Subgrid closure
         **params):
 
         # Create bases and domain
@@ -82,19 +83,76 @@ class OceanModel():
         for k, v in params.items():
             setattr(self, k, v)
 
+        # First-order substitutions
+        problem.substitutions['ux'] = "dx(u)"
+        problem.substitutions['vx'] = "dx(v)"
+        problem.substitutions['wx'] = "dx(w)"
+        problem.substitutions['bx'] = "dx(b)"
+        problem.substitutions['uy'] = "dy(u)"
+        problem.substitutions['vy'] = "dy(v)"
+        problem.substitutions['wy'] = "dy(w)"
+        problem.substitutions['by'] = "dy(b)"
+
+        # Closure substitutions
+        if closure in (None, "DNS"):
+            # No subgrid forcing
+            problem.substitutions['Fx_sgs'] = "0"
+            problem.substitutions['Fy_sgs'] = "0"
+            problem.substitutions['Fz_sgs'] = "0"
+            problem.substitutions['Fb_sgs'] = "0"
+
+        else:
+            # Strain-rate tensor
+            problem.substitutions['Sxx'] = "ux"
+            problem.substitutions['Syy'] = "vy"
+            problem.substitutions['Szz'] = "wz"
+            problem.substitutions['Sxy'] = "(uy + vx) / 2"
+            problem.substitutions['Syz'] = "(vz + wy) / 2"
+            problem.substitutions['Szx'] = "(wx + uz) / 2"
+            problem.substitutions['Syx'] = "Sxy"
+            problem.substitutions['Szy'] = "Syz"
+            problem.substitutions['Sxz'] = "Szx"
+            problem.substitutions['tr_S2'] = "Sxx*Sxx + Sxy*Sxy + Sxz*Sxz + Syx*Syx + Syy*Syy + Syz*Syz + Szx*Szx + Szy*Szy + Szz*Szz"
+            # Subgrid viscosity and diffusivity
+            if closure == "constant_smagorinsky":
+                # Requires Cs and δ parameters
+                problem.substitutions['ν_sgs'] = "(Cs*δ)**2 * sqrt(2*tr_S2)"
+                problem.substitutions['κ_sgs'] = "ν_sgs"
+            else:
+                raise ValueError("Unrecognized closure option: %s" %closure)
+            # Subgrid stress
+            problem.substitutions['τxx'] = "2 * ν_sgs * Sxx"
+            problem.substitutions['τxy'] = "2 * ν_sgs * Sxy"
+            problem.substitutions['τxz'] = "2 * ν_sgs * Sxz"
+            problem.substitutions['τyx'] = "2 * ν_sgs * Syx"
+            problem.substitutions['τyy'] = "2 * ν_sgs * Syy"
+            problem.substitutions['τyz'] = "2 * ν_sgs * Syz"
+            problem.substitutions['τzx'] = "2 * ν_sgs * Szx"
+            problem.substitutions['τzy'] = "2 * ν_sgs * Szy"
+            problem.substitutions['τzz'] = "2 * ν_sgs * Szz"
+            # Subgrid thermal diffusion
+            problem.substitutions['qx'] = "- κ_sgs * dx(b)"
+            problem.substitutions['qy'] = "- κ_sgs * dy(b)"
+            problem.substitutions['qz'] = "- κ_sgs * dz(b)"
+            # Subgrid forcing
+            problem.substitutions['Fx_sgs'] = "dx(τxx) + dy(τyx) + dz(τzx)"
+            problem.substitutions['Fy_sgs'] = "dx(τxy) + dy(τyy) + dz(τzy)"
+            problem.substitutions['Fz_sgs'] = "dx(τxz) + dy(τyz) + dz(τzz)"
+            problem.substitutions['Fb_sgs'] = "- dx(qx) - dy(qy) - dz(qz)"
+
         # Momentum equations
-        problem.add_equation("dt(u) - f*v - ν*(dx(dx(u)) + dy(dy(u)) + dz(uz)) + dx(p) = - u*dx(u) - v*dy(u) - w*uz")
-        problem.add_equation("dt(v) + f*u - ν*(dx(dx(v)) + dy(dy(v)) + dz(vz)) + dy(p) = - u*dx(v) - v*dy(v) - w*vz")
-        problem.add_equation("dt(w) - b   - ν*(dx(dx(w)) + dy(dy(w)) + dz(wz)) + dz(p) = - u*dx(w) - v*dy(w) - w*wz")
-        problem.add_equation("dt(b) - κ*(dx(dx(b)) + dy(dy(b)) + dz(bz)) = - u*dx(b) - v*dy(b) - w*bz")
-        problem.add_equation("dx(u) + dy(v) + wz = 0")
+        problem.add_equation("dt(u) - f*v - ν*(dx(ux) + dy(uy) + dz(uz)) + dx(p) = - u*ux - v*uy - w*uz + Fx_sgs")
+        problem.add_equation("dt(v) + f*u - ν*(dx(vx) + dy(vy) + dz(vz)) + dy(p) = - u*vx - v*vy - w*vz + Fy_sgs")
+        problem.add_equation("dt(w) - b   - ν*(dx(wx) + dy(wy) + dz(wz)) + dz(p) = - u*wx - v*wy - w*wz + Fz_sgs")
+        problem.add_equation("dt(b)       - κ*(dx(bx) + dy(by) + dz(bz))         = - u*bx - v*by - w*bz + Fb_sgs")
+        problem.add_equation("ux + vy + wz = 0")
 
         problem.add_equation("bz - dz(b) = 0")
         problem.add_equation("uz - dz(u) = 0")
         problem.add_equation("vz - dz(v) = 0")
         problem.add_equation("wz - dz(w) = 0")
 
-        problem.add_bc("integ_z(p) = 0", condition="(nx == 0) and (ny == 0)")
+        problem.add_bc("right(p) = 0", condition="(nx == 0) and (ny == 0)")
 
     def build_solver(self, timestepper=de.timesteppers.RK443):
 
@@ -199,9 +257,9 @@ class DeepConvectionModel(OceanModel):
         κ = 1.43e-7,    # Diffusivity [m²/s]
         ν = 1e-6,       # Kinematic viscosity [m²/s]
         bflux = 0.0,    # Buoyancy gradient [s⁻²]
-        ):
+        **params):
 
-        OceanModel.__init__(self, nx=nx, ny=ny, nz=nz, Lx=Lx, Ly=Ly, Lz=Lz, f=f, κ=κ, ν=ν, bflux=bflux)
+        OceanModel.__init__(self, nx=nx, ny=ny, nz=nz, Lx=Lx, Ly=Ly, Lz=Lz, f=f, κ=κ, ν=ν, bflux=bflux, **params)
 
         self.problem.add_bc("left(bz) = 0")
         self.problem.add_bc("right(b) = bflux")
@@ -224,12 +282,12 @@ class RayleighBernardConvection(OceanModel):
         ν = 1e-6,       # Kinematic viscosity [m²/s]
         Ra = 2500,      # Rayleigh number
         Bz = None,      # Buoyancy gradient [s⁻²]
-        ):
+        **params):
 
         if Bz is None:
             Bz = Ra * ν * κ / (Lz**4)
 
-        OceanModel.__init__(self, nx=nx, ny=ny, nz=nz, Lx=Lx, Ly=Ly, Lz=Lz, f=f, κ=κ, ν=ν, Bz=Bz)
+        OceanModel.__init__(self, nx=nx, ny=ny, nz=nz, Lx=Lx, Ly=Ly, Lz=Lz, f=f, κ=κ, ν=ν, Bz=Bz, **params)
 
         self.nopenetration_topandbottom()
         self.noslip_topandbottom()
