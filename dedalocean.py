@@ -222,8 +222,12 @@ class RayleighBernardConvection(OceanModel):
         f = 1e-4,       # Coriolis parameters [s⁻¹]
         κ = 1.43e-7,    # Diffusivity [m²/s]
         ν = 1e-6,       # Kinematic viscosity [m²/s]
-        Bz = 1e-6,      # Buoyancy gradient [s⁻²]
+        Ra = 2500,      # Rayleigh number
+        Bz = None,      # Buoyancy gradient [s⁻²]
         ):
+
+        if Bz is None:
+            Bz = Ra * ν * κ / (Lz**4)
 
         OceanModel.__init__(self, nx=nx, ny=ny, nz=nz, Lx=Lx, Ly=Ly, Lz=Lz, f=f, κ=κ, ν=ν, Bz=Bz)
 
