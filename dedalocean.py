@@ -76,7 +76,7 @@ class OceanModel():
         self.ν = ν
 
         # 3D rotating Boussinesq hydrodynamics
-        problem = de.IVP(domain, variables=['p', 'b', 'u', 'v', 'w', 'bz', 'uz', 'vz', 'wz'], time='t')
+        self.problem = problem = de.IVP(domain, variables=['p', 'b', 'u', 'v', 'w', 'bz', 'uz', 'vz', 'wz'], time='t')
 
         addparams(problem, κ=κ, ν=ν, f=f, **params)
         for k, v in params.items():
@@ -94,9 +94,7 @@ class OceanModel():
         problem.add_equation("vz - dz(v) = 0")
         problem.add_equation("wz - dz(w) = 0")
 
-        self.problem.add_bc("integ_z(p) = 0", condition="(nx == 0) and (ny == 0)")
-
-        self.problem = problem
+        problem.add_bc("integ_z(p) = 0", condition="(nx == 0) and (ny == 0)")
 
     def build_solver(self, timestepper=de.timesteppers.RK443):
 
