@@ -100,7 +100,7 @@ class OceanModel():
 
         start_build_time = time.time()
         solver = self.problem.build_solver(timestepper)
-        logger.info('Solver built. (t = %f) ' %(time.time()-start_init_time))
+        logger.info('Solver built. (t = %f) ' %(time.time()-start_build_time))
 
         self.solver = solver
 
