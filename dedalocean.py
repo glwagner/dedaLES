@@ -38,14 +38,14 @@ def mixedlayerN(z, dmix, Nmix, Ndeep):
 def addparams(problem, **params):
     for k, v in params.items():
         problem.parameters[k] = v
-        
+
 class OceanModel():
     def __init__(self,
-        nx = 128, 
+        nx = 128,
         ny = 128,
-        nz = 16, 
-        Lx = 800.0,     # Domain length [m] 
-        Ly = 800.0,     # Domain length [m] 
+        nz = 16,
+        Lx = 800.0,     # Domain length [m]
+        Ly = 800.0,     # Domain length [m]
         Lz = 100.0,     # Domain height [m]
         f = 1e-4,       # Coriolis parameters [s⁻¹]
         κ = 1.43e-7,    # Diffusivity [m²/s]
@@ -102,7 +102,7 @@ class OceanModel():
 
         start_build_time = time.time()
         solver = self.problem.build_solver(timestepper)
-        logger.info('Solver built. (t = %f) ' %(time.time()-start_init_time)))
+        logger.info('Solver built. (t = %f) ' %(time.time()-start_init_time))
 
         self.solver = solver
 
@@ -117,7 +117,7 @@ class OceanModel():
         self.bz = solver.state['bz']
 
 
-    def run(self, initial_dt=1e-4, sim_time=100): 
+    def run(self, initial_dt=1e-4, sim_time=100):
 
         # Integration parameters
         self.solver.stop_sim_time = self.solver.sim_time + sim_time
@@ -187,15 +187,15 @@ class OceanModel():
     def freeslip_topandbottom(self):
         self.freeslip_top()
         self.freeslip_bottom()
-        
+
 
 class DeepConvectionModel(OceanModel):
     def __init__(self,
-        nx = 128, 
+        nx = 128,
         ny = 128,
-        nz = 16, 
-        Lx = 800.0,     # Domain length [m] 
-        Ly = 800.0,     # Domain length [m] 
+        nz = 16,
+        Lx = 800.0,     # Domain length [m]
+        Ly = 800.0,     # Domain length [m]
         Lz = 100.0,     # Domain height [m]
         f = 1e-4,       # Coriolis parameters [s⁻¹]
         κ = 1.43e-7,    # Diffusivity [m²/s]
@@ -215,11 +215,11 @@ class DeepConvectionModel(OceanModel):
 
 class RayleighBernardConvection(OceanModel):
     def __init__(self,
-        nx = 128, 
+        nx = 128,
         ny = 128,
-        nz = 16, 
-        Lx = 800.0,     # Domain length [m] 
-        Ly = 800.0,     # Domain length [m] 
+        nz = 16,
+        Lx = 800.0,     # Domain length [m]
+        Ly = 800.0,     # Domain length [m]
         Lz = 100.0,     # Domain height [m]
         f = 1e-4,       # Coriolis parameters [s⁻¹]
         κ = 1.43e-7,    # Diffusivity [m²/s]
@@ -235,7 +235,7 @@ class RayleighBernardConvection(OceanModel):
         self.problem.add_bc("right(b) = -right(Bz*z)")
 
         self.build_solver()
-        
+
 
     def set_unstable_ic(self, magnitude=1e-3):
 
