@@ -96,24 +96,51 @@ class LESClosure():
 class ConstantSmagorinsky(LESClosure):
     """
     Constant Smagorinsky closure for Large Eddy Simulation.
+
+    Parameters
+    ----------
+    δ_const : float
+        Constant-filter size
+    Cs : float
+        Poincare constant for grid-relative filter
+
+    Notes
+    -----
+    The subgrid viscosity is calculated with constant-filter and grid-relative
+    filter sizes as
+
+        ν_sgs = [δ_const**2 + (Cs*δ_grid)**2] * sqrt(2*tr(S**2))
+        δ_grid = (δx * δy * δz)**(1/3)
+
+    where the grid-based fitler lengths are determined from the grid spacing
+    and dealiasing factors D as
+
+        δx[i] = Dx * 2 * Δx[i] = Dx * (x[i+1] - x[i-1])
+
     """
-    def __init__(self, δ=1.0, Cs=0.13):
-        self.δ = δ
+    def __init__(self, δ_const=0, Cs=0.13):
+        self.δ_const = δ_const
         self.Cs = Cs
 
-    def substitutions(self, problem, tracers=None):
-        # Requires Cs and δ parameters
+    def substitutions(self, problem, tracers=[]):
+        # Construct grid-based filter field
+        δx = problem.domain.bases[0].dealias * 2 * problem.domain.grid_spacing(0)
+        δy = problem.domain.bases[1].dealias * 2 * problem.domain.grid_spacing(1)
+        δz = problem.domain.bases[2].dealias * 2 * problem.domain.grid_spacing(2)
+        self.δ = problem.domain.new_field()
+        self.δ['g'] = (δx*δy*δz)**(1/3)
+        # Add subgrid parameters to problem
+        problem.parameters['δ0'] = self.δ_const
         problem.parameters['δ'] = self.δ
         problem.parameters['Cs'] = self.Cs
-
+        # Add subgrid substitutions to problem
         self.add_strainratetensor_substitutions(problem)
-        problem.substitutions['ν_sgs'] = "(Cs*δ)**2 * sqrt(2*tr_S2)"
+        problem.substitutions['ν_sgs'] = "(δ0**2 + (Cs*δ)**2) * sqrt(2*tr_S2)"
         self.add_subgridstress_substitutions(problem)
-
-        if tracers is not None:
-            problem.substitutions['κ_sgs'] = "ν_sgs"
-            for tracer in tracers:
-                self.add_subgridflux_substitutions(problem, tracer)
+        # Add tracer terms to problem
+        problem.substitutions['κ_sgs'] = "ν_sgs"
+        for tracer in tracers:
+            self.add_subgridflux_substitutions(problem, tracer)
 
 
 
