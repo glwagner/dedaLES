@@ -100,7 +100,7 @@ class OceanModel():
             # Requires Cs and δ parameters
             problem.substitutions['ν_sgs'] = "(Cs*δ)**2 * sqrt(2*tr_S2)"
             problem.substitutions['κ_sgs'] = "ν_sgs"
-        else:
+        elif closure not in (None, "DNS"):
             raise ValueError("Unrecognized closure option: %s" %closure)
 
         # Closure substitutions
