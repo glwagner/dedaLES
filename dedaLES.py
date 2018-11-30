@@ -61,7 +61,7 @@ class LESClosure():
         problem.substitutions['tr_S2'] = (
             "Sxx*Sxx + Sxy*Sxy + Sxz*Sxz + Syx*Syx + Syy*Syy + Syz*Syz + Szx*Szx + Szy*Szy + Szz*Szz")
 
-    def add_subgridstress_substitutions(self, problem): 
+    def add_subgridstress_substitutions(self, problem):
         # Subgrid stress proportional to eddy viscosity
         problem.substitutions['τxx'] = "2 * ν_sgs * Sxx"
         problem.substitutions['τxy'] = "2 * ν_sgs * Sxy"
@@ -103,13 +103,12 @@ class ConstantSmagorinsky(LESClosure):
 
     def substitutions(self, problem, tracers=None):
         # Requires Cs and δ parameters
-        problem.substitutions['δ'] = self.δ
-        problem.substitutions['Cs'] = self.Cs
+        problem.parameters['δ'] = self.δ
+        problem.parameters['Cs'] = self.Cs
 
         self.add_strainratetensor_substitutions(problem)
-        self.add_subgridstress_substitutions(problem)
-
         problem.substitutions['ν_sgs'] = "(Cs*δ)**2 * sqrt(2*tr_S2)"
+        self.add_subgridstress_substitutions(problem)
 
         if tracers is not None:
             problem.substitutions['κ_sgs'] = "ν_sgs"
@@ -158,7 +157,7 @@ class BoussinesqModel():
         self.ν = ν
 
         # 3D rotating Boussinesq hydrodynamics
-        self.problem = problem = de.IVP(domain, 
+        self.problem = problem = de.IVP(domain,
                 variables=['p', 'b', 'u', 'v', 'w', 'bz', 'uz', 'vz', 'wz'], time='t')
 
         # Add additional parameters passed to constructor to the dedalus Problem.
@@ -244,7 +243,7 @@ class BoussinesqModel():
                 dt = CFL.compute_dt()
                 self.solver.step(dt)
                 if (self.solver.iteration-1) % 100 == 0:
-                    logger.info('Iteration: %i, Time: %e, dt: %e' 
+                    logger.info('Iteration: %i, Time: %e, dt: %e'
                                     %(self.solver.iteration, self.solver.sim_time, dt))
                     logger.info('Average KE = %e' %flow.volume_average('KE'))
         except:
@@ -255,7 +254,7 @@ class BoussinesqModel():
             logger.info('Iterations: %i' %self.solver.iteration)
             logger.info('Sim end time: %f' %self.solver.sim_time)
             logger.info('Run time: %.2f sec' %(end_run_time-start_run_time))
-            logger.info('Run time: %f cpu-hr' 
+            logger.info('Run time: %f cpu-hr'
                             %((end_run_time-start_run_time) / hour * self.domain.dist.comm_cart.size))
 
     # Boundary conditions:
