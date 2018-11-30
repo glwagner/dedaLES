@@ -79,6 +79,8 @@ class OceanModel():
         # 3D rotating Boussinesq hydrodynamics
         self.problem = problem = de.IVP(domain, variables=['p', 'b', 'u', 'v', 'w', 'bz', 'uz', 'vz', 'wz'], time='t')
 
+        # Add additional parameters passed to constructor to the dedalus Problem.
+        # TODO: do this more sensibly.
         addparams(problem, κ=κ, ν=ν, f=f, **params)
         for k, v in params.items():
             setattr(self, k, v)
@@ -120,7 +122,8 @@ class OceanModel():
             problem.substitutions['Syx'] = "Sxy"
             problem.substitutions['Szy'] = "Syz"
             problem.substitutions['Sxz'] = "Szx"
-            problem.substitutions['tr_S2'] = "Sxx*Sxx + Sxy*Sxy + Sxz*Sxz + Syx*Syx + Syy*Syy + Syz*Syz + Szx*Szx + Szy*Szy + Szz*Szz"
+            problem.substitutions['tr_S2'] = (
+                "Sxx*Sxx + Sxy*Sxy + Sxz*Sxz + Syx*Syx + Syy*Syy + Syz*Syz + Szx*Szx + Szy*Szy + Szz*Szz")
             # Subgrid stress proportional to eddy viscosity
             problem.substitutions['τxx'] = "2 * ν_sgs * Sxx"
             problem.substitutions['τxy'] = "2 * ν_sgs * Sxy"
@@ -173,7 +176,6 @@ class OceanModel():
         self.wz = solver.state['wz']
         self.bz = solver.state['bz']
 
-
     def run(self, initial_dt=1e-4, sim_time=100):
 
         # Integration parameters
@@ -211,39 +213,55 @@ class OceanModel():
             logger.info('Run time: %.2f sec' %(end_run_time-start_run_time))
             logger.info('Run time: %f cpu-hr' %((end_run_time-start_run_time) / hour * self.domain.dist.comm_cart.size))
 
-    def nopenetration_top(self):
+    # Boundary conditions:
+    def set_nopenetration_top(self):
         self.problem.add_bc("right(w) = 0", condition="(nx != 0) or (ny != 0)")
 
-    def nopenetration_bottom(self):
+    def set_nopenetration_bottom(self):
         self.problem.add_bc("left(w) = 0")
 
-    def nopenetration_topandbottom(self):
-        self.nopenetration_top()
-        self.nopenetration_bottom()
+    def set_nopenetration_topandbottom(self):
+        self.set_nopenetration_top()
+        self.set_nopenetration_bottom()
 
-    def noslip_top(self):
+    def set_noslip_top(self):
         self.problem.add_bc("right(u) = 0")
         self.problem.add_bc("right(v) = 0")
 
-    def noslip_bottom(self):
+    def set_noslip_bottom(self):
         self.problem.add_bc("left(u) = 0")
         self.problem.add_bc("left(v) = 0")
 
-    def noslip_topandbottom(self):
-        self.noslip_top()
-        self.noslip_bottom()
+    def set_noslip_topandbottom(self):
+        self.set_noslip_top()
+        self.set_noslip_bottom()
 
-    def freeslip_top(self):
+    def set_freeslip_top(self):
         self.problem.add_bc("right(uz) = 0")
         self.problem.add_bc("right(vz) = 0")
 
-    def freeslip_bottom(self):
+    def set_freeslip_bottom(self):
         self.problem.add_bc("left(uz) = 0")
         self.problem.add_bc("left(vz) = 0")
 
-    def freeslip_topandbottom(self):
-        self.freeslip_top()
-        self.freeslip_bottom()
+    def set_freeslip_topandbottom(self):
+        self.set_freeslip_top()
+        self.set_freeslip_bottom()
+
+    def set_noflux_bottom(self):
+        self.problem.add_bc("left(bz) = 0")
+
+    def set_noflux_top(self):
+        self.problem.add_bc("right(bz) = 0")
+
+    def set_noflux_topandbottom(self):
+        self.set_noflux_top()
+        self.set_noflux_bottom()
+
+    def set_default_bcs(self):
+        self.set_nopenetration_topandbottom()
+        self.set_freeslip_topandbottom()
+        self.set_noflux_topandbottom()
 
 
 class DeepConvectionModel(OceanModel):
@@ -264,8 +282,8 @@ class DeepConvectionModel(OceanModel):
 
         self.problem.add_bc("left(bz) = 0")
         self.problem.add_bc("right(b) = bflux")
-        self.nopenetration_topandbottom()
-        self.freeslip_topandbottom()
+        self.set_nopenetration_topandbottom()
+        self.set_freeslip_topandbottom()
 
         self.build_solver()
 
@@ -290,8 +308,8 @@ class RayleighBernardConvection(OceanModel):
 
         OceanModel.__init__(self, nx=nx, ny=ny, nz=nz, Lx=Lx, Ly=Ly, Lz=Lz, f=f, κ=κ, ν=ν, Bz=Bz, **params)
 
-        self.nopenetration_topandbottom()
-        self.noslip_topandbottom()
+        self.set_nopenetration_topandbottom()
+        self.set_noslip_topandbottom()
         self.problem.add_bc("left(b) = -left(Bz*z)")
         self.problem.add_bc("right(b) = -right(Bz*z)")
 
