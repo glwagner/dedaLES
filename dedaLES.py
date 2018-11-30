@@ -93,6 +93,14 @@ class OceanModel():
         problem.substitutions['wy'] = "dy(w)"
         problem.substitutions['by'] = "dy(b)"
 
+        # Subgrid viscosity and diffusivity
+        if closure == "constant_smagorinsky":
+            # Requires Cs and δ parameters
+            problem.substitutions['ν_sgs'] = "(Cs*δ)**2 * sqrt(2*tr_S2)"
+            problem.substitutions['κ_sgs'] = "ν_sgs"
+        else:
+            raise ValueError("Unrecognized closure option: %s" %closure)
+
         # Closure substitutions
         if closure in (None, "DNS"):
             # No subgrid forcing
@@ -101,8 +109,8 @@ class OceanModel():
             problem.substitutions['Fz_sgs'] = "0"
             problem.substitutions['Fb_sgs'] = "0"
 
-        else:
-            # Strain-rate tensor
+        else: # LES closure. Subgrid stress/flux equal to resolved stress and an eddy viscosity and diffusivity.
+            # Strain-rate tensor of resolved flow
             problem.substitutions['Sxx'] = "ux"
             problem.substitutions['Syy'] = "vy"
             problem.substitutions['Szz'] = "wz"
@@ -113,14 +121,7 @@ class OceanModel():
             problem.substitutions['Szy'] = "Syz"
             problem.substitutions['Sxz'] = "Szx"
             problem.substitutions['tr_S2'] = "Sxx*Sxx + Sxy*Sxy + Sxz*Sxz + Syx*Syx + Syy*Syy + Syz*Syz + Szx*Szx + Szy*Szy + Szz*Szz"
-            # Subgrid viscosity and diffusivity
-            if closure == "constant_smagorinsky":
-                # Requires Cs and δ parameters
-                problem.substitutions['ν_sgs'] = "(Cs*δ)**2 * sqrt(2*tr_S2)"
-                problem.substitutions['κ_sgs'] = "ν_sgs"
-            else:
-                raise ValueError("Unrecognized closure option: %s" %closure)
-            # Subgrid stress
+            # Subgrid stress proportional to eddy viscosity
             problem.substitutions['τxx'] = "2 * ν_sgs * Sxx"
             problem.substitutions['τxy'] = "2 * ν_sgs * Sxy"
             problem.substitutions['τxz'] = "2 * ν_sgs * Sxz"
