@@ -39,18 +39,99 @@ def addparams(problem, **params):
     for k, v in params.items():
         problem.parameters[k] = v
 
-class OceanModel():
+
+class LESClosure():
+    """
+    Generic LES closure.
+    """
+    def __init__(self):
+        pass
+
+    def add_strainratetensor_substitutions(self, problem):
+        # Strain-rate tensor of resolved flow
+        problem.substitutions['Sxx'] = "ux"
+        problem.substitutions['Syy'] = "vy"
+        problem.substitutions['Szz'] = "wz"
+        problem.substitutions['Sxy'] = "(uy + vx) / 2"
+        problem.substitutions['Syz'] = "(vz + wy) / 2"
+        problem.substitutions['Szx'] = "(wx + uz) / 2"
+        problem.substitutions['Syx'] = "Sxy"
+        problem.substitutions['Szy'] = "Syz"
+        problem.substitutions['Sxz'] = "Szx"
+        problem.substitutions['tr_S2'] = (
+            "Sxx*Sxx + Sxy*Sxy + Sxz*Sxz + Syx*Syx + Syy*Syy + Syz*Syz + Szx*Szx + Szy*Szy + Szz*Szz")
+
+    def add_subgridstress_substitutions(self, problem): 
+        # Subgrid stress proportional to eddy viscosity
+        problem.substitutions['τxx'] = "2 * ν_sgs * Sxx"
+        problem.substitutions['τxy'] = "2 * ν_sgs * Sxy"
+        problem.substitutions['τxz'] = "2 * ν_sgs * Sxz"
+        problem.substitutions['τyx'] = "2 * ν_sgs * Syx"
+        problem.substitutions['τyy'] = "2 * ν_sgs * Syy"
+        problem.substitutions['τyz'] = "2 * ν_sgs * Syz"
+        problem.substitutions['τzx'] = "2 * ν_sgs * Szx"
+        problem.substitutions['τzy'] = "2 * ν_sgs * Szy"
+        problem.substitutions['τzz'] = "2 * ν_sgs * Szz"
+
+        # Subgrid momentum fluxes
+        problem.substitutions['Fx_sgs'] = "dx(τxx) + dy(τyx) + dz(τzx)"
+        problem.substitutions['Fy_sgs'] = "dx(τxy) + dy(τyy) + dz(τzy)"
+        problem.substitutions['Fz_sgs'] = "dx(τxz) + dy(τyz) + dz(τzz)"
+
+    def add_subgridflux_substitutions(self, problem, tracer):
+        # Subgrid buoyancy fluxes
+        qx = "q%sx" %tracer
+        qy = "q%sy" %tracer
+        qz = "q%sz" %tracer
+
+        problem.substitutions[qx] = "- κ_sgs * dx(%s)" %tracer
+        problem.substitutions[qy] = "- κ_sgs * dy(%s)" %tracer
+        problem.substitutions[qz] = "- κ_sgs * dz(%s)" %tracer
+        problem.substitutions['F%s_sgs' %tracer] = "- dx(%s) - dy(%s) - dz(%s)" %(qx, qy, qz)
+
+    def add_closure_substitutions(self):
+        pass
+
+
+class ConstantSmagorinsky(LESClosure):
+    """
+    Constant Smagorinsky closure for Large Eddy Simulation.
+    """
+    def __init__(self, δ=1.0, Cs=0.13):
+        self.δ = δ
+        self.Cs = Cs
+
+    def substitutions(self, problem, tracers=None):
+        # Requires Cs and δ parameters
+        problem.substitutions['δ'] = self.δ
+        problem.substitutions['Cs'] = self.Cs
+
+        self.add_strainratetensor_substitutions(problem)
+        self.add_subgridstress_substitutions(problem)
+
+        problem.substitutions['ν_sgs'] = "(Cs*δ)**2 * sqrt(2*tr_S2)"
+
+        if tracers is not None:
+            problem.substitutions['κ_sgs'] = "ν_sgs"
+            for tracer in tracers:
+                self.add_subgridflux_substitutions(problem, tracer)
+
+
+
+
+class BoussinesqModel():
     def __init__(self,
-        nx = 128,
-        ny = 128,
-        nz = 16,
-        Lx = 800.0,     # Domain length [m]
-        Ly = 800.0,     # Domain length [m]
-        Lz = 100.0,     # Domain height [m]
-        f = 1e-4,       # Coriolis parameters [s⁻¹]
-        κ = 1.43e-7,    # Diffusivity [m²/s]
-        ν = 1e-6,       # Kinematic viscosity [m²/s]
-        closure = None, # Subgrid closure
+        nx = 64,
+        ny = 64,
+        nz = 64,
+        Lx = 1.0,        # Domain length [m]
+        Ly = 1.0,        # Domain length [m]
+        Lz = 1.0,        # Domain height [m]
+        f = 0.0,         # Coriolis parameters [s⁻¹]
+        κ = 1.43e-7,     # Diffusivity [m²/s]
+        ν = 1e-6,        # Kinematic viscosity [m²/s]
+        Nsq = 0.0,       # Background buoyancy gradeitn [s⁻²]
+        closure = None,  # Subgrid closure
         **params):
 
         # Create bases and domain
@@ -77,11 +158,12 @@ class OceanModel():
         self.ν = ν
 
         # 3D rotating Boussinesq hydrodynamics
-        self.problem = problem = de.IVP(domain, variables=['p', 'b', 'u', 'v', 'w', 'bz', 'uz', 'vz', 'wz'], time='t')
+        self.problem = problem = de.IVP(domain, 
+                variables=['p', 'b', 'u', 'v', 'w', 'bz', 'uz', 'vz', 'wz'], time='t')
 
         # Add additional parameters passed to constructor to the dedalus Problem.
-        # TODO: do this more sensibly.
-        addparams(problem, κ=κ, ν=ν, f=f, **params)
+        # TODO: do this more sensibly
+        addparams(problem, κ=κ, ν=ν, f=f, Nsq=Nsq, **params)
         for k, v in params.items():
             setattr(self, k, v)
 
@@ -95,60 +177,21 @@ class OceanModel():
         problem.substitutions['wy'] = "dy(w)"
         problem.substitutions['by'] = "dy(b)"
 
-        # Subgrid viscosity and diffusivity
-        if closure == "constant_smagorinsky":
-            # Requires Cs and δ parameters
-            problem.substitutions['ν_sgs'] = "(Cs*δ)**2 * sqrt(2*tr_S2)"
-            problem.substitutions['κ_sgs'] = "ν_sgs"
-        elif closure not in (None, "DNS"):
-            raise ValueError("Unrecognized closure option: %s" %closure)
-
         # Closure substitutions
         if closure in (None, "DNS"):
-            # No subgrid forcing
+            # No parameterized subgrid fluxes
             problem.substitutions['Fx_sgs'] = "0"
             problem.substitutions['Fy_sgs'] = "0"
             problem.substitutions['Fz_sgs'] = "0"
             problem.substitutions['Fb_sgs'] = "0"
-
-        else: # LES closure. Subgrid stress/flux equal to resolved stress and an eddy viscosity and diffusivity.
-            # Strain-rate tensor of resolved flow
-            problem.substitutions['Sxx'] = "ux"
-            problem.substitutions['Syy'] = "vy"
-            problem.substitutions['Szz'] = "wz"
-            problem.substitutions['Sxy'] = "(uy + vx) / 2"
-            problem.substitutions['Syz'] = "(vz + wy) / 2"
-            problem.substitutions['Szx'] = "(wx + uz) / 2"
-            problem.substitutions['Syx'] = "Sxy"
-            problem.substitutions['Szy'] = "Syz"
-            problem.substitutions['Sxz'] = "Szx"
-            problem.substitutions['tr_S2'] = (
-                "Sxx*Sxx + Sxy*Sxy + Sxz*Sxz + Syx*Syx + Syy*Syy + Syz*Syz + Szx*Szx + Szy*Szy + Szz*Szz")
-            # Subgrid stress proportional to eddy viscosity
-            problem.substitutions['τxx'] = "2 * ν_sgs * Sxx"
-            problem.substitutions['τxy'] = "2 * ν_sgs * Sxy"
-            problem.substitutions['τxz'] = "2 * ν_sgs * Sxz"
-            problem.substitutions['τyx'] = "2 * ν_sgs * Syx"
-            problem.substitutions['τyy'] = "2 * ν_sgs * Syy"
-            problem.substitutions['τyz'] = "2 * ν_sgs * Syz"
-            problem.substitutions['τzx'] = "2 * ν_sgs * Szx"
-            problem.substitutions['τzy'] = "2 * ν_sgs * Szy"
-            problem.substitutions['τzz'] = "2 * ν_sgs * Szz"
-            # Subgrid thermal diffusion
-            problem.substitutions['qx'] = "- κ_sgs * dx(b)"
-            problem.substitutions['qy'] = "- κ_sgs * dy(b)"
-            problem.substitutions['qz'] = "- κ_sgs * dz(b)"
-            # Subgrid forcing
-            problem.substitutions['Fx_sgs'] = "dx(τxx) + dy(τyx) + dz(τzx)"
-            problem.substitutions['Fy_sgs'] = "dx(τxy) + dy(τyy) + dz(τzy)"
-            problem.substitutions['Fz_sgs'] = "dx(τxz) + dy(τyz) + dz(τzz)"
-            problem.substitutions['Fb_sgs'] = "- dx(qx) - dy(qy) - dz(qz)"
+        else:
+            closure.substitutions(problem, tracers=["b"])
 
         # Momentum equations
-        problem.add_equation("dt(u) - f*v - ν*(dx(ux) + dy(uy) + dz(uz)) + dx(p) = - u*ux - v*uy - w*uz + Fx_sgs")
-        problem.add_equation("dt(v) + f*u - ν*(dx(vx) + dy(vy) + dz(vz)) + dy(p) = - u*vx - v*vy - w*vz + Fy_sgs")
-        problem.add_equation("dt(w) - b   - ν*(dx(wx) + dy(wy) + dz(wz)) + dz(p) = - u*wx - v*wy - w*wz + Fz_sgs")
-        problem.add_equation("dt(b)       - κ*(dx(bx) + dy(by) + dz(bz))         = - u*bx - v*by - w*bz + Fb_sgs")
+        problem.add_equation("dt(u) - f*v   - ν*(dx(ux) + dy(uy) + dz(uz)) + dx(p) = - u*ux - v*uy - w*uz + Fx_sgs")
+        problem.add_equation("dt(v) + f*u   - ν*(dx(vx) + dy(vy) + dz(vz)) + dy(p) = - u*vx - v*vy - w*vz + Fy_sgs")
+        problem.add_equation("dt(w) - b     - ν*(dx(wx) + dy(wy) + dz(wz)) + dz(p) = - u*wx - v*wy - w*wz + Fz_sgs")
+        problem.add_equation("dt(b) + Nsq*w - κ*(dx(bx) + dy(by) + dz(bz))         = - u*bx - v*by - w*bz + Fb_sgs")
         problem.add_equation("ux + vy + wz = 0")
 
         problem.add_equation("bz - dz(b) = 0")
@@ -201,7 +244,8 @@ class OceanModel():
                 dt = CFL.compute_dt()
                 self.solver.step(dt)
                 if (self.solver.iteration-1) % 100 == 0:
-                    logger.info('Iteration: %i, Time: %e, dt: %e' %(self.solver.iteration, self.solver.sim_time, dt))
+                    logger.info('Iteration: %i, Time: %e, dt: %e' 
+                                    %(self.solver.iteration, self.solver.sim_time, dt))
                     logger.info('Average KE = %e' %flow.volume_average('KE'))
         except:
             logger.error('Exception raised, triggering end of main loop.')
@@ -211,7 +255,8 @@ class OceanModel():
             logger.info('Iterations: %i' %self.solver.iteration)
             logger.info('Sim end time: %f' %self.solver.sim_time)
             logger.info('Run time: %.2f sec' %(end_run_time-start_run_time))
-            logger.info('Run time: %f cpu-hr' %((end_run_time-start_run_time) / hour * self.domain.dist.comm_cart.size))
+            logger.info('Run time: %f cpu-hr' 
+                            %((end_run_time-start_run_time) / hour * self.domain.dist.comm_cart.size))
 
     # Boundary conditions:
     def set_nopenetration_top(self):
@@ -264,7 +309,7 @@ class OceanModel():
         self.set_noflux_topandbottom()
 
 
-class DeepConvectionModel(OceanModel):
+class DeepConvectionModel(BoussinesqModel):
     def __init__(self,
         nx = 128,
         ny = 128,
@@ -278,7 +323,7 @@ class DeepConvectionModel(OceanModel):
         bflux = 0.0,    # Buoyancy gradient [s⁻²]
         **params):
 
-        OceanModel.__init__(self, nx=nx, ny=ny, nz=nz, Lx=Lx, Ly=Ly, Lz=Lz, f=f, κ=κ, ν=ν, bflux=bflux, **params)
+        BoussinesqModel.__init__(self, nx=nx, ny=ny, nz=nz, Lx=Lx, Ly=Ly, Lz=Lz, f=f, κ=κ, ν=ν, bflux=bflux, **params)
 
         self.problem.add_bc("left(bz) = 0")
         self.problem.add_bc("right(b) = bflux")
@@ -288,7 +333,7 @@ class DeepConvectionModel(OceanModel):
         self.build_solver()
 
 
-class RayleighBernardConvection(OceanModel):
+class RayleighBernardConvection(BoussinesqModel):
     def __init__(self,
         nx = 128,
         ny = 128,
@@ -306,7 +351,7 @@ class RayleighBernardConvection(OceanModel):
         if Bz is None:
             Bz = Ra * ν * κ / (Lz**4)
 
-        OceanModel.__init__(self, nx=nx, ny=ny, nz=nz, Lx=Lx, Ly=Ly, Lz=Lz, f=f, κ=κ, ν=ν, Bz=Bz, **params)
+        BoussinesqModel.__init__(self, nx=nx, ny=ny, nz=nz, Lx=Lx, Ly=Ly, Lz=Lz, f=f, κ=κ, ν=ν, Bz=Bz, **params)
 
         self.set_nopenetration_topandbottom()
         self.set_noslip_topandbottom()
