@@ -80,6 +80,16 @@ class ChannelFlow():
 
         self.solver = solver
 
+    def log(self, logger, dt):
+        logger.info('Iteration: %i, Time: %e, dt: %e' %(self.solver.iteration, self.solver.sim_time, dt))
+        logger.info('Average KE = %e' %self.flow.volume_average('KE'))
+
+    def time_to_log(self, logcadence):
+        return (self.solver.iteration-1) % logcadence == 0
+
+    def add_flow_properties(self, flow):
+        flow.add_property("0.5*(u*u + v*v + w*w)", name='KE')
+
     def run(self, initial_dt=1e-16, sim_time=None, iterations=100, wall_time=None, logcadence=100):
 
         # Integration parameters
@@ -101,7 +111,7 @@ class ChannelFlow():
         CFL.add_velocities(('u', 'v', 'w'))
 
         flow = flow_tools.GlobalFlowProperty(self.solver, cadence=10)
-        flow.add_property("0.5*(u*u + v*v + w*w)", name='KE')
+        self.add_flow_properties(flow)
 
         self.CFL = CFL
         self.flow = flow
@@ -112,10 +122,8 @@ class ChannelFlow():
             while self.solver.ok:
                 dt = CFL.compute_dt()
                 self.solver.step(dt)
-                if (self.solver.iteration-1) % logcadence == 0:
-                    logger.info(
-                        'Iteration: %i, Time: %e, dt: %e' %(self.solver.iteration, self.solver.sim_time, dt))
-                    logger.info('Average KE = %e' %flow.volume_average('KE'))
+                if self.time_to_log(logcadence): self.log(logger, dt)
+                    
         except:
             logger.error('Exception raised, triggering end of main loop.')
             raise
@@ -241,3 +249,7 @@ class BoussinesqChannelFlow(ChannelFlow):
         self.vz = self.solver.state['vz']
         self.wz = self.solver.state['wz']
         self.bz = self.solver.state['bz']
+
+    def set_b(self, b0):
+        self.b['g'] = b0
+        self.b.differentiate('z', out=self.bz)
