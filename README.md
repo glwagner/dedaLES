@@ -13,7 +13,7 @@ mpiexec python basic_example.py
 
 ## LES Closures
 
-Currently impelemented:
+Currently implemented:
 
 * Constant Smagorinsky ([wikipedia][wiki_const_smag], [Vreugdenhil and Taylor 2018])
 
