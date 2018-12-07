@@ -1,11 +1,11 @@
 # DedaLES
 
 This python package provides classes and functions for performing oceanic process studies 
-using Direct Numerical Simulation (DNS) and Large Eddy Simulation (LES) in [Dedalus]().
+using Direct Numerical Simulation (DNS) and Large Eddy Simulation (LES) in [Dedalus].
 
 ## Basic usage
 
-With [Dedalus]() installed, navigate to `examples/` and do
+With [Dedalus] installed, navigate to `examples/` and do
 
 ```
 mpiexec python basic_example.py
@@ -15,16 +15,16 @@ mpiexec python basic_example.py
 
 Currently impelemented:
 
-* Constant Smagorinsky ([1](), [2]())
+* Constant Smagorinsky ([1][1], [2][2])
 
 Definitely planned:
 
-* Anisotropic Minimum Dissipation ([3]())
+* Anisotropic Minimum Dissipation ([3][3])
 
 Aspirational:
 
-* Dynamic Smagorinsky ([4](), [5]())
-* Sullivan-McWilliams-Moeng ([6]())
+* Dynamic Smagorinsky ([4][4], [5][5])
+* Sullivan-McWilliams-Moeng ([6][6])
 
 [Dedalus]: http://dedalus-project.org
 
