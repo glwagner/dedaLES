@@ -29,10 +29,6 @@ class ChannelFlow():
     def set_nopenetration_bottom(self):
         self.problem.add_bc("left(w) = 0")
 
-    def set_nopenetration_topandbottom(self):
-        self.set_nopenetration_top()
-        self.set_nopenetration_bottom()
-
     def set_noslip_top(self):
         self.problem.add_bc("right(u) = 0")
         self.problem.add_bc("right(v) = 0")
@@ -40,11 +36,7 @@ class ChannelFlow():
     def set_noslip_bottom(self):
         self.problem.add_bc("left(u) = 0")
         self.problem.add_bc("left(v) = 0")
-
-    def set_noslip_topandbottom(self):
-        self.set_noslip_top()
-        self.set_noslip_bottom()
-
+    
     def set_freeslip_top(self):
         self.problem.add_bc("right(uz) = 0")
         self.problem.add_bc("right(vz) = 0")
@@ -53,10 +45,6 @@ class ChannelFlow():
         self.problem.add_bc("left(uz) = 0")
         self.problem.add_bc("left(vz) = 0")
 
-    def set_freeslip_topandbottom(self):
-        self.set_freeslip_top()
-        self.set_freeslip_bottom()
-    
     def set_wall_velocity_top(self, utop=0, vtop=0):
         self.parameters['utop'] = utop
         self.parameters['vtop'] = vtop
@@ -70,6 +58,36 @@ class ChannelFlow():
 
         self.problem.add_bc("left(u) = ubottom")
         self.problem.add_bc("left(v) = vbottom")
+
+    def set_flux_bottom(self, tracers, flux=0):
+        if isinstance(tracers, str):
+            self.problem.add_bc("left({}z) = {}".format(tracers, flux))
+        else:
+            for tracer in tracers:
+                self.problem.add_bc("left({}z) = {}".format(tracer, flux))
+
+    def set_flux_top(self, tracers, flux=0):
+        if isinstance(tracers, str):
+            self.problem.add_bc("right({}z) = {}".format(tracers, flux))
+        else:
+            for tracer in tracers:
+                self.problem.add_bc("right({}z) = {}".format(tracer, flux))
+
+    def set_noflux_top(self, tracers):
+        self.set_flux_top(tracers)
+
+    def set_noflux_bottom(self, tracers):
+        self.set_flux_bottom(tracers)
+
+    def set_bc(self, bctype, *walls):
+        for wall in walls:
+            method = getattr(self, 'set_%s_%s' %(bctype, wall))
+            method()
+
+    def set_tracer_bc(self, bctype, tracers, *walls):
+        for wall in walls:
+            method = getattr(self, 'set_%s_%s' %(bctype, wall))
+            method(tracers)
 
     def build_solver(self, timestepper='RK443'):
 
@@ -179,8 +197,7 @@ class BoussinesqChannelFlow(ChannelFlow):
         self.ν = ν
 
         # 3D rotating Boussinesq hydrodynamics
-        self.problem = problem = de.IVP(domain, 
-                                        variables=['p', 'b', 'u', 'v', 'w', 'bz', 'uz', 'vz', 'wz'], time='t')
+        self.problem = problem = de.IVP(domain, variables=['p', 'b', 'u', 'v', 'w', 'bz', 'uz', 'vz', 'wz'], time='t')
 
         # Add additional parameters passed to constructor to the dedalus Problem.
         addparams(problem, κ=κ, ν=ν, f=f, Nsq=Nsq, **params)
@@ -221,20 +238,16 @@ class BoussinesqChannelFlow(ChannelFlow):
 
         problem.add_bc("right(p) = 0", condition="(nx == 0) and (ny == 0)")
 
-    def set_noflux_bottom(self):
-        self.problem.add_bc("left(bz) = 0")
-
     def set_noflux_top(self):
-        self.problem.add_bc("right(bz) = 0")
+        ChannelFlow.set_noflux_top(self, "b")
 
-    def set_noflux_topandbottom(self):
-        self.set_noflux_top()
-        self.set_noflux_bottom()
+    def set_noflux_bottom(self):
+        ChannelFlow.set_noflux_bottom(self, "b")
 
     def set_default_bcs(self):
-        self.set_nopenetration_topandbottom()
-        self.set_noslip_topandbottom()
-        self.set_noflux_topandbottom()
+        self.set_bc("nopenetration", "top", "bottom")
+        self.set_bc("noslip", "top", "bottom")
+        self.set_bc("noflux", "top", "bottom")
 
     def build_solver(self, timestepper='RK443'):
 
