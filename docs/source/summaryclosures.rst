@@ -10,10 +10,11 @@
 
 .. _Subgrid closures:
 
-Subgrid closures
-================
+Subgrid turbulence closures
+===========================
 
-The following subgrid closure schemes are implemented in dedaLES:
+The following closure schemes for the subgrid-scale turbulent stress
+and tracer flux are implemented in dedaLES:
 
 .. toctree::
     :maxdepth: 2

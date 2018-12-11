@@ -8,7 +8,7 @@
 
 
 `dedaLES`_: Large Eddy Simulation with `dedalus`_
-==============================================
+=================================================
 
 `dedaLES`_ provides solvers for Large Eddy Simulation (LES) using 
 the `dedalus`_ framework for solving partial differential equations 

@@ -14,8 +14,22 @@ Anisotropic minimum dissipation
 ===============================
 
 The anisotropic minimum dissipation (AMD) model, like :ref:`constant Smagorinsky`,
-is an eddy viscosity and eddy diffusivity model for subgrid stress and
-subgrid tracer flux. In its simplest implementation, the AMD eddy viscosity is
+models the subgrid stress :math:`F^\bu_{ij}` as the product of the resolved rate of 
+strain  :math:`S_{ij} = \tfrac{1}{2} \left ( \d_i u_j + \d_j u_i \right )` and 
+and eddy viscosity :math:`\nu_e`. The subgrid tracer flux is :math:`F^b` is
+modeled similarly in terms of the resolved tracer gradient :math:`\d_i \theta` 
+and an eddy viscosity :math:`\kappa_e`. Unlike :ref:`constant Smagorinsky`, however, 
+which introduces a typically :math:`O(1)` turbulent Prandtl number to relate 
+eddy viscosity to eddy diffusivity, the AMD eddy diffusivity :math:`\kappa_e` 
+is determined independently via an analog of the method used to determine eddy visosity.
+
+The relationship between subgrid stress and rate of strain in the AMD model is 
+
+.. math::
+
+    F^\bu_{ij} = 2 \nu_e S_{ij} \, ,
+
+The eddy viscosity :math:`\nu_e` is determined by the direction-dependent formula
 
 .. math::
 

@@ -15,9 +15,9 @@ Constant Smagorinsky
 ====================
 
 In the first-order 'constant Smagorinsky' turbulence closure, the subgrid stress
-:math:`F^\bu_{ij}` defined in terms of the resolved
-stress :math:`S_{ij} = \tfrac{1}{2} \left ( \d_i u_j + \d_j u_i \right )` 
-and an eddy viscosity:
+:math:`F^\bu_{ij}` defined in terms of the resolved rate of strain tensor
+:math:`S_{ij} = \tfrac{1}{2} \left ( \d_i u_j + \d_j u_i \right )` 
+(which we abbreviate as the 'strain tensor', and an eddy viscosity :math:`\nu_e`:
 
 .. math::
 
@@ -35,7 +35,7 @@ where :math:`\delta` is a constant 'filter width',
 and :math:`\delta_{\r{grid}}` is a filter width defined by
 some multiple of the grid resolution, and thus dependent on position 
 within the chosen grid in general.
-The invariant of the resolved stress tensor :math:`|S|` is
+The invariant of the resolved strain tensor :math:`|S|` is
 
 .. math::
 
