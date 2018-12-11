@@ -1,0 +1,65 @@
+.. math::
+    \newcommand{\b}[1]{\boldsymbol{#1}}
+    \newcommand{\r}[1]{\mathrm{#1}}
+    \newcommand{\bz}{\b{z}}
+    \newcommand{\bu}{\b{u}}
+    \newcommand{\bcdot}{\b{\cdot}}
+    \newcommand{\d}{\partial}
+
+    \newcommand{\p}{\, .}
+    \newcommand{\c}{\, ,}
+
+.. _constant Smagorinsky:
+
+Constant Smagorinsky
+====================
+
+In the first-order 'constant Smagorinsky' turbulence closure, the subgrid stress
+:math:`F^\bu_{ij}` defined in terms of the resolved
+stress :math:`S_{ij} = \tfrac{1}{2} \left ( \d_i u_j + \d_j u_i \right )` 
+and an eddy viscosity:
+
+.. math::
+
+    F^\bu_{ij} = 2 \nu_e S_{ij} \, ,
+
+In dedaLES, the eddy viscosity :math:`\nu_e` is defined via a slight
+generalization of traditional constant Smagorinsky,
+
+.. math::
+
+    \nu_e = \left [ \delta^2 + \left ( C \delta_{\r{grid}} \right )^2 \right ] | S | \, ,
+
+where :math:`\delta` is a constant 'filter width', 
+:math:`C` is the 'Smagorinsky coefficient', 
+and :math:`\delta_{\r{grid}}` is a filter width defined by
+some multiple of the grid resolution, and thus dependent on position 
+within the chosen grid in general.
+The invariant of the resolved stress tensor :math:`|S|` is
+
+.. math::
+
+    | S | \equiv \sqrt{ 2 S_{ij} S_{ji} } \, .
+
+Note that :math:`S_{ij}` is symmetric, so that :math:`S_{ij} = S_{ji}`.
+The subgrid buoyancy flux is
+
+.. math::
+
+    \b{F}^b = \kappa_e \nabla b \c
+
+with :math:`\kappa_e = \nu_e / Pr_e` for effective turbulent Prandtl number 
+:math:`Pr_e`.
+
+
+Default parameters
+------------------
+
+The default parameters in dedaLES are
+
+.. math::
+
+    \delta &= 0 \c \\
+    C &= 0.17 \c \\
+    \delta_{\r{grid}} &= \left ( \Delta x \Delta y \Delta z \right )^{1/3} \c \\
+    Pr_e &= 1 \p
