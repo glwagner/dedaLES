@@ -7,15 +7,16 @@ import dedaLES
 iters = 100
 resolution = {'nx': 64, 'ny': 64, 'nz': 16}
 
-model_dns  = dedaLES.init_rayleigh_benard(**resolution, closure=None)
-model_smag = dedaLES.init_rayleigh_benard(**resolution, closure=dedaLES.ConstantSmagorinsky())
+model_dns  = dedaLES.init_rayleigh_benard_benchmark(**resolution, closure=None)
+model_smag = dedaLES.init_rayleigh_benard_benchmark(**resolution, closure=dedaLES.ConstantSmagorinsky())
 
 buildtime_dns = dedaLES.benchmark_build(model_dns)
 buildtime_smag = dedaLES.benchmark_build(model_smag)
 
 for model in (model_dns, model_smag):
-    dedaLES.set_rayleigh_benard_benchmark_ic(model)
+    dedaLES.set_ic_rayleigh_benard_benchmark(model)
 
+dedaLES.mpiprint("Running benchmarks:")
 runtime_dns  = dedaLES.benchmark_run(model_dns, iterations=iters)
 runtime_smag = dedaLES.benchmark_run(model_smag, iterations=iters)
 
@@ -53,4 +54,4 @@ formattedmsg = msg.format(
     sma_slowdown = runtime_smag/runtime_dns,
 )
 
-if MPI.COMM_WORLD.Get_rank() is 0: print(formattedmsg)
+dedaLES.mpiprint(formattedmsg)
