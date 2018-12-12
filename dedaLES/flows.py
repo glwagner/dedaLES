@@ -142,16 +142,29 @@ class ChannelFlow():
         self.solver = solver
 
     def log(self, logger, dt):
-        logger.info('Iteration: %i, Time: %e, dt: %e' %(self.solver.iteration, self.solver.sim_time, dt))
-        logger.info('Average KE = %e' %self.flow.volume_average('KE'))
+        pass
 
-    def time_to_log(self, logcadence):
-        return (self.solver.iteration-1) % logcadence == 0
+    def time_to_log(self, log_cadence):
+        return (self.solver.iteration-1) % log_cadence == 0
 
-    def add_flow_properties(self, flow):
-        flow.add_property("0.5*(u*u + v*v + w*w)", name='KE')
+    def init_flow(self, cadence=10):
+        self.flow = flow_tools.GlobalFlowProperty(self.solver, cadence=cadence)
 
-    def run(self, initial_dt=1e-16, sim_time=None, iterations=100, wall_time=None, logcadence=100):
+    def add_flow_KE(self):
+        self.flow.add_property("0.5*(u*u + v*v + w*w)", name="KE")
+
+    """
+        run(self, **kwargs)
+
+    Run a ChannelFlow model.
+    """
+    def run(self, 
+                     dt = 1e-16, 
+             iterations = 100, 
+             sim_time   = None, 
+             wall_time  = None, 
+            log_cadence = 100
+        ):
 
         # Integration parameters
         if wall_time is not None:
@@ -166,25 +179,12 @@ class ChannelFlow():
             self.solver.stop_sim_time = np.inf
             self.solver.stop_iteration = self.solver.iteration + iterations
 
-        # CFL
-        CFL = flow_tools.CFL(self.solver, initial_dt=initial_dt, cadence=5, safety=1.5, 
-                             max_change=1.5, min_change=0.5)
-        CFL.add_velocities(('u', 'v', 'w'))
-
-        flow = flow_tools.GlobalFlowProperty(self.solver, cadence=10)
-        self.add_flow_properties(flow)
-
-        self.CFL = CFL
-        self.flow = flow
-
         try:
             logger.info('Starting loop')
             start_run_time = time.time()
             while self.solver.ok:
-                dt = CFL.compute_dt()
                 self.solver.step(dt)
-                if self.time_to_log(logcadence): self.log(logger, dt)
-                    
+                if self.time_to_log(log_cadence): self.log(logger, dt)
         except:
             logger.error('Exception raised, triggering end of main loop.')
             raise
@@ -299,6 +299,14 @@ class BoussinesqChannelFlow(ChannelFlow):
 
         problem.add_bc("right(p) = 0", condition="(nx == 0) and (ny == 0)")
 
+        self.log_tasks = {}
+        
+    def add_log_task(self, name, task):
+        self.log_tasks[name] = task
+
+    def add_flow_variance(self):
+        self.flow.add_property("0.5*b*b", name="variance")
+
     def set_noflux_bc_top(self):
         ChannelFlow.set_tracer_noflux_bc(self, "b", "top")
 
@@ -324,6 +332,16 @@ class BoussinesqChannelFlow(ChannelFlow):
         self.wz = self.solver.state['wz']
         self.bz = self.solver.state['bz']
 
+        self.init_flow()
+        self.add_flow_KE()
+        self.add_flow_variance()
+
     def set_b(self, b0):
         self.b['g'] = b0
         self.b.differentiate('z', out=self.bz)
+
+    def log(self, logger, dt):
+        logger.info('Iteration: %i, Time: %e, dt: %e' %(self.solver.iteration, self.solver.sim_time, dt))
+
+        for name, task in self.log_tasks.items(): 
+            logger.info("{} = {}".format(name, task(self)))
