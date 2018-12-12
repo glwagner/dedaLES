@@ -6,8 +6,6 @@
 .. _Vreugdenhil and Taylor 2018: https://aip.scitation.org/doi/pdf/10.1063/1.5037039?class=pdf
 .. _Abkar et al 2016: https://journals.aps.org/prfluids/abstract/10.1103/PhysRevFluids.1.041701
 
-
-
 .. _Subgrid closures:
 
 Subgrid turbulence closures
@@ -19,6 +17,6 @@ and tracer flux are implemented in dedaLES:
 .. toctree::
     :maxdepth: 2
 
-    closures/constantsmagorinsky
-    closures/modifiedconstantsmagorinsky
-    closures/amd
+    closures/constant_smagorinsky
+    closures/modified_constant_smagorinsky
+    closures/anisotropic_minimum_dissipation

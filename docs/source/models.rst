@@ -10,6 +10,9 @@
     \newcommand{\p}{\, .}
     \newcommand{\c}{\, ,}
 
+    \newcommand{\bnabla}{\b{\nabla}}
+    \newcommand{\bcdot}{\b{\cdot}}
+
 
 .. _Fluid models:
 
@@ -29,11 +32,11 @@ The rotating, stratified Boussinesq equations are
 
 .. math::
 
-    \d_t \bu + \left ( \bu \cdot \nabla \right ) \bu - f \bz \times \bu + \nabla p = b \bz
-        + \nu \nabla^2 \bu + \nabla \cdot \b{F}^{\bu} \c \\
+    \d_t \bu + \left ( \bu \bcdot \bnabla \right ) \bu - f \bz \times \bu + \bnabla p = b \bz
+        + \nu \bnabla^2 \bu + \bnabla \bcdot \b{F}^{\bu} \c \\
      
-    \d_t b + \bu \cdot \nabla b + w N^2 =
-        + \kappa \nabla^2 b + \nabla \cdot \b{F}^b \c
+    \d_t b + \bu \bcdot \bnabla b + w N^2 =
+        + \kappa \bnabla^2 b + \bnabla \bcdot \b{F}^b \c
 
 where :math:`\bu = (u, v, w)` is the velocity field, :math:`p` is pressure, 
 :math:`b` is buoyancy, :math:`f` is the Coriolis frequency, :math:`\nu` is viscosity,
