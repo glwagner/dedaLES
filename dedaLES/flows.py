@@ -84,7 +84,9 @@ class ChannelFlow():
             walls : The walls on which the boundary condition will be specified.
                     (either "top" or "bottom").
 
-            kwargs : Keyword arguments associated with the boundary condition.
+        Keyword args
+        ------------
+            u, v, etc: Keyword arguments associated with the specified boundary condition.
 
         Notes
         -----
@@ -302,7 +304,7 @@ class BoussinesqChannelFlow(ChannelFlow):
 
     def set_noflux_bc_bottom(self):
         ChannelFlow.set_tracer_noflux_bc(self, "b", "bottom")
-    
+
     def set_default_bcs(self):
         self.set_bc("nopenetration", "top", "bottom")
         self.set_bc("noslip", "top", "bottom")
