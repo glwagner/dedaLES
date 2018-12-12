@@ -11,19 +11,75 @@
     \newcommand{\p}{\, .}
     \newcommand{\c}{\, ,}
 
-
+.. _dedalus: http://dedalus-project.org
 .. _dedaLES: https://github.com/glwagner/dedaLES
-.. _convection_example.py: https://github.com/glwagner/dedaLES/examples/convection_example.py
+.. _ocean_convection_example.py: https://github.com/glwagner/dedaLES/examples/ocean_convection_example.py
+.. _rayleigh_benard_example.py: https://github.com/glwagner/dedaLES/examples/rayleigh_benard_example.py
 .. _Taylor and Ferrari 2010: https://aslopubs.onlinelibrary.wiley.com/doi/epdf/10.4319/lo.2011.56.6.2293
 
-Examples
-========
 
-A few example problems with `dedaLES`_.
+Examples of Boussinesq channel flow
+===================================
+
+Here we detail a few example problems we have implemented using 
+`dedaLES`_'s `BoussinesqChannelFlow` class. This class implenents
+the Boussinesq equations with optional rotation or background 
+buoyancy gradient in a horizontally-periodic domain with rigid
+top and bottom boundaries.
+
+Rayleigh-Benard Convection
+---------------------------
+
+This example resembles the standard 3D Rayleigh-Benard convection
+example included with `dedalus`_. This example is implemented in
+`rayleigh_benard_example.py`_.
+
+In this problem, which reaches a statistically-steady state if run
+for long enough, a constant and unstable buoyancy differential
+maintained between the top and bottom boundary drives convection
+and turbulence. Two key parameters are the Prandtl number :math:`Pr`,
+and the Rayleigh number, :math:`Ra`. Together these determine the 
+unstable top-to-bottom buoyancy gradient :math:`B_z = -Ra Pr`, which is 
+applied to the system via the boundary conditions
+
+.. math::
+
+    b(z=-L_z) = 0 \qquad \text{and} \qquad b(z=0) = B_z L_z \c
+
+where :math:`L_z` is the domain height. The simulation is initialized
+with random noise of the form
+
+.. math::
+
+    b(x, y, z, t=0) = a \epsilon z (z + L_z) \c
+
+where :math:`a \epsilon(x, y, z)` is normally distributed random 
+noise with amplitude :math:`a`.
+
+We use the following parameters, all of which are non-dimensional:
+
+========================     ============================
+       Parameter                       Values            
+========================     ============================
+:math:`L_x, L_y`             :math:`25`
+:math:`L_z`                  :math:`1`
+:math:`n_x, n_y`             :math:`64`                  
+:math:`n_z`                  :math:`16`
+:math:`\kappa`               :math:`1.0`
+:math:`Pr = \nu/\kappa`      :math:`1.0`
+:math:`Ra_{\text{crit}}`     :math:`1707.762`
+:math:`Ra`                   :math:`1.8 Ra_{\text{crit}}`
+:math:`a`                    :math:`10^{-3}`
+========================     ============================
 
 
-Convection into a stratified fluid (`convection_example.py`_)
--------------------------------------------------------------
+
+
+
+Convection into a stratified fluid
+----------------------------------
+
+This example is implemented in `ocean_convection_example.py`_.
 
 In this initial value problem, a constant flux of buoyancy out of the surface
 drives cooling and convection into a stratified fluid. The initial buoyancy 
@@ -34,7 +90,7 @@ profile is given by
     b(t=0) = N^2_{\infty} (z+h_0) H_d(-z-h_0) 
 
 where :math:`h_0` is the initial mixed layer depth, the buoyancy gradient below
-the mixed layer is :math:`\d_z b(z=-Lz) = N^2_{\infty}`, and :math:`H_d(\zeta)`
+the mixed layer is :math:`\d_z b(z=-L_z) = N^2_{\infty}`, and :math:`H_d(\zeta)`
 is a smoothed Heaviside function that goes from
 :math:`0` to :math:`1` across :math:`\zeta=0` with transition width :math:`d`:
 
@@ -75,7 +131,7 @@ where :math:`t_0` is the time-scale over which the buoyancy flux decreases.
 We use the following parameters for our examples:
 
 ====================    ============================        ==================================
-     Parameters                   Values                                  Units
+     Parameter                    Values                                  Units
 ====================    ============================        ==================================
 :math:`L_x, L_y`        :math:`200`                         :math:`\r{m}`
 :math:`L_z`             :math:`100`                         :math:`\r{m}`

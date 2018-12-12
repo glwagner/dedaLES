@@ -20,7 +20,7 @@ dedaLES provides solvers for
 
 * Boussinesq flow in a channel
 
-.. _Boussinesq channel flow
+.. _Boussinesq channel flow:
 
 Boussinesq Channel flow
 -----------------------
