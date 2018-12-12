@@ -1,40 +1,56 @@
 import sys; sys.path.append("..")
 
-import random
-import time
+from mpi4py import MPI
 
 import dedaLES
 
+iters = 100
+resolution = {'nx': 64, 'ny': 64, 'nz': 16}
 
-def timerfunc(func):
-    """
-    A timer decorator
-    """
-    def function_timer(*args, **kwargs):
-        """
-        A nested function for timing other functions
-        """
-        start = time.time()
-        value = func(*args, **kwargs)
-        end = time.time()
-        runtime = end - start
-        msg = "The runtime for {func} took {time} seconds to complete"
-        print(msg.format(func=func.__name__,
-                         time=runtime))
-        return value
-    return function_timer
+model_dns  = dedaLES.init_rayleigh_benard(**resolution, closure=None)
+model_smag = dedaLES.init_rayleigh_benard(**resolution, closure=dedaLES.ConstantSmagorinsky())
 
-model_dns = dedaLES.build_rayleigh_benard_benchmark(64, 64, 16, closure=None)
-model_constsmag = dedaLES.build_rayleigh_benard_benchmark(64, 64, 16, closure=dedaLES.ConstantSmagorinsky())
+buildtime_dns = dedaLES.benchmark_build(model_dns)
+buildtime_smag = dedaLES.benchmark_build(model_smag)
 
-@timerfunc
-def dns_benchmark():
-    dedaLES.run_rayleigh_benard_benchmark(model_dns)
+for model in (model_dns, model_smag):
+    dedaLES.set_rayleigh_benard_benchmark_ic(model)
 
-@timerfunc
-def const_smag_benchmark():
-    dedaLES.run_rayleigh_benard_benchmark(model_constsmag)
-    
-if __name__ == '__main__':
-    dns_benchmark()
-    const_smag_benchmark()
+runtime_dns  = dedaLES.benchmark_run(model_dns, iterations=iters)
+runtime_smag = dedaLES.benchmark_run(model_smag, iterations=iters)
+
+msg = """
+
+Benchmark results for {iters} iterations:
+
+    ** Build time **
+    ================
+
+                   Model     Time
+                   -----     ----
+
+                     DNS  |  {build_dns:>8.2f} s
+    Constant Smagorinsky  |  {build_sma:>8.2f} s
+
+
+    ** Run time **
+    ==============  
+
+                   Model     Time           Slowdown vs DNS
+                   -----     ----           ---------------
+
+                     DNS  |  {run_dns:>8.2f} s  |  1
+    Constant Smagorinsky  |  {run_sma:>8.2f} s  |  {sma_slowdown:>2f}
+
+
+"""
+formattedmsg = msg.format(
+    iters = iters, 
+    build_dns = buildtime_dns,
+    build_sma = buildtime_smag,
+    run_dns = runtime_dns, 
+    run_sma = runtime_smag, 
+    sma_slowdown = runtime_smag/runtime_dns,
+)
+
+if MPI.COMM_WORLD.Get_rank() is 0: print(formattedmsg)

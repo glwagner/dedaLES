@@ -133,8 +133,37 @@ class ChannelFlow():
             method = getattr(self, 'set_tracer_%s_bc_%s' %(bctype, wall))
             method(tracers, **kwargs)
 
+    def set_field(self, phi, gridvalue):
+        """
+        Set the state field `phi` as `gridvalue`. Calculate the derivative `phiz`.
+
+        Args
+        ----
+            phi : The name of the field to be set.
+
+            gridvalue : The grid values of phi.
+        """
+
+        field = getattr(self, phi)
+        field['g'] = gridvalue
+
+        fieldz = getattr(self, phi+'z')
+        field.differentiate('z', out=fieldz)
+
+    def set_fields(self, **fields):
+        for name, value in fields.items():
+            self.set_field(name, value)
+
     def build_solver(self, timestepper='RK443'):
+        """
+        Build a dedalus solver for the model with `timestepper`.
+
+        Args
+        ----
+            timestepper : The name of the timestepper to be used by the solver. 
+        """
         detimestepper = getattr(de.timesteppers, timestepper)
+
         start_build_time = time.time()
         solver = self.problem.build_solver(detimestepper)
         logger.info('Solver built. (t = %f) ' %(time.time()-start_build_time))
@@ -156,7 +185,7 @@ class ChannelFlow():
     """
         run(self, **kwargs)
 
-    Run a ChannelFlow model.
+    Run a ChannelFlow model (work in progress).
     """
     def run(self, 
                      dt = 1e-16, 
@@ -336,9 +365,6 @@ class BoussinesqChannelFlow(ChannelFlow):
         self.add_flow_KE()
         self.add_flow_variance()
 
-    def set_b(self, b0):
-        self.b['g'] = b0
-        self.b.differentiate('z', out=self.bz)
 
     def log(self, logger, dt):
         logger.info('Iteration: %i, Time: %e, dt: %e' %(self.solver.iteration, self.solver.sim_time, dt))
