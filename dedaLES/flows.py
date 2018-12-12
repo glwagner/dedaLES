@@ -168,7 +168,7 @@ class ChannelFlow():
 
         # CFL
         CFL = flow_tools.CFL(self.solver, initial_dt=initial_dt, cadence=5, safety=1.5, 
-                             max_change=1.5, min_change=0.5, max_dt=0.05)
+                             max_change=1.5, min_change=0.5)
         CFL.add_velocities(('u', 'v', 'w'))
 
         flow = flow_tools.GlobalFlowProperty(self.solver, cadence=10)
