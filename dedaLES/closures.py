@@ -79,7 +79,7 @@ class ConstantSmagorinsky(LESClosure):
         δx[i] = Dx * 2 * Δx[i] = Dx * (x[i+1] - x[i-1])
 
     """
-    def __init__(self, δ_const=0, Cs=0.13):
+    def __init__(self, δ_const=0, Cs=0.17):
         self.δ_const = δ_const
         self.Cs = Cs
 

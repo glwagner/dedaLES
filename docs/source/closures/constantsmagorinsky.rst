@@ -28,11 +28,11 @@ generalization of traditional constant Smagorinsky,
 
 .. math::
 
-    \nu_e = \left [ \delta^2 + \left ( C \delta_{\r{grid}} \right )^2 \right ] | S | \, ,
+    \nu_e = \left [ \delta_c^2 + \left ( C_s \delta_{\r{c}} \right )^2 \right ] | S | \, ,
 
-where :math:`\delta` is a constant 'filter width', 
-:math:`C` is the 'Smagorinsky coefficient', 
-and :math:`\delta_{\r{grid}}` is a filter width defined by
+where :math:`\delta_c` is a constant 'filter width', 
+:math:`C_s` is the 'Smagorinsky coefficient', 
+and :math:`\delta` is a filter width defined by
 some multiple of the grid resolution, and thus dependent on position 
 within the chosen grid in general.
 The invariant of the resolved strain tensor :math:`|S|` is
@@ -50,16 +50,3 @@ The subgrid buoyancy flux is
 
 with :math:`\kappa_e = \nu_e / Pr_e` for effective turbulent Prandtl number 
 :math:`Pr_e`.
-
-
-Default parameters
-------------------
-
-The default parameters in dedaLES are
-
-.. math::
-
-    \delta &= 0 \c \\
-    C &= 0.17 \c \\
-    \delta_{\r{grid}} &= \left ( \Delta x \Delta y \Delta z \right )^{1/3} \c \\
-    Pr_e &= 1 \p
