@@ -1,11 +1,6 @@
 import sys; sys.path.append("..")
 
 import time, logging
-import numpy as np
-import matplotlib.pyplot as plt
-
-from numpy import pi
-from dedalus.extras import flow_tools
 
 import dedaLES
 
@@ -35,7 +30,7 @@ def benchmark_run(model, iterations=100, dt=1e-4):
 def benchmark_build(model):
     model.build_solver()
 
-def init_rayleigh_benard(nx=64, ny=64, nz=16, closure=None):
+def init_rayleigh_benard_benchmark(nx=64, ny=64, nz=16, closure=None):
     Lx, Ly, Lz = 25.0, 25.0, 1.0 # Domain
 
     # Parameters
@@ -63,7 +58,7 @@ def init_rayleigh_benard(nx=64, ny=64, nz=16, closure=None):
     return model
 
 
-def set_rayleigh_benard_benchmark_ic(model):
+def set_ic_rayleigh_benard_benchmark(model):
     noise = dedaLES.random_noise(model.domain)
 
     # Linear background + perturbations damped at walls
