@@ -50,3 +50,14 @@ The subgrid buoyancy flux is
 
 with :math:`\kappa_e = \nu_e / Pr_e` for effective turbulent Prandtl number 
 :math:`Pr_e`.
+
+References
+==========
+
+- `wikipedia`_
+- `Smagorinsky 1963`_
+- `Vreugdenhil and Taylor 2018`_ 
+
+.. _wikipedia: https://en.wikipedia.org/wiki/Large_eddy_simulation#Smagorinsky%E2%80%93Lilly_model
+.. _Smagorinsky 1963: https://journals.ametsoc.org/doi/abs/10.1175/1520-0493%281963%29091%3C0099%3AGCEWTP%3E2.3.CO%3B2
+.. _Vreugdenhil and Taylor 2018: https://aip.scitation.org/doi/abs/10.1063/1.5037039

@@ -31,10 +31,17 @@ is
 
     \lambda = \left \{ \begin{matrix}
         1 & \quad \r{for} \quad N^2 \le 0 \\
-        \max \left [ 0, \sqrt{ 1 - N^2 / Pr |S|^2 } \right ] & \quad \r{for} \quad N^2 > 0
+        \max \left [ 0, \sqrt{ 1 - N^2 / Pr | S|^2 } \right ] & \quad \r{for} \quad N^2 > 0
         \end{matrix} \right . \c
 
 where :math:`Pr` is the turbulent Prandtl number.
 When the flow is affected by stratification such that
 the Richardson-like number :math:`N^2/|S|^2` is greater 
 than zero the buoyancy factor reduces the effective subgrid stress.
+
+References
+==========
+
+- `Pressel et al 2015`_
+
+.. _Pressel et al: https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2015MS000496
