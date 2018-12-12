@@ -1,4 +1,5 @@
 *.swp
+*.h5
 *__pycache__
 docs/build
 job*
