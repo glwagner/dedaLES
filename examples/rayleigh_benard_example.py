@@ -52,7 +52,7 @@ noise = dedaLES.random_noise(model.domain)
 z = model.z
 pert = a * noise * z * (Lz - z)
 b0 = Bz*(z - pert)
-model.set_b(b0)
+model.set_fields(b=b0)
 
 # Integration parameters
 model.solver.stop_sim_time = 100
@@ -68,7 +68,7 @@ snap.add_task("interp(v, z=0)", scales=1, name='v midplane')
 snap.add_task("interp(w, z=0)", scales=1, name='w midplane')
 
 # CFL
-CFL = flow_tools.CFL(model.solver, initial_dt=1e-4, cadence=5, 
+CFL = flow_tools.CFL(model.solver, initial_dt=1e-6, cadence=5, 
                      safety=1.5, max_change=1.5, min_change=0.5, max_dt=0.05)
 CFL.add_velocities(('u', 'v', 'w'))
 
@@ -83,7 +83,7 @@ try:
     while model.solver.ok:
         dt = CFL.compute_dt()
         model.solver.step(dt)
-        if (model.solver.iteration-1) % 100 == 0:
+        if (model.solver.iteration-1) % 10 == 0:
             logger.info('Iteration: %i, Time: %e, dt: %e' %(
                         model.solver.iteration, model.solver.sim_time, dt))
             logger.info('Max Re = %f' %flow.max('Re'))
