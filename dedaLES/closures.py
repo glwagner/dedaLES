@@ -165,19 +165,20 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
         else:
             problem.substitutions['wk_bk'] = "0"
 
-        problem.substitutions['ν_sgs'] = "-C**2 * (uik_ujk_Sij - wk_bk) / tr_uij"
+        problem.substitutions['ν_pred_sgs'] = "-C**2 * (uik_ujk_Sij - wk_bk) / tr_uij"
+        problem.substitutions['ν_sgs'] = "max(0, ν_pred_sgs)"
 
         self.substitute_subgridstress(problem)
 
         for c in tracers:
             # mod_Dc = |∇c|²
             mod_Dc = f"mod_D{c}"
-            problem.substitutions[mod_Dc] = f"{c}x**2 + {c}y**2 + {c}**2"
+            problem.substitutions[mod_Dc] = f"{c}x**2 + {c}y**2 + {c}z**2"
 
             # Dc_dot_ui = ∇c • ∂ᵢu
-            Dc_dot_ux = f"n{c}_dot_ux"
-            Dc_dot_uy = f"n{c}_dot_uy"
-            Dc_dot_uz = f"n{c}_dot_uz"
+            Dc_dot_ux = f"D{c}_dot_ux"
+            Dc_dot_uy = f"D{c}_dot_uy"
+            Dc_dot_uz = f"D{c}_dot_uz"
 
             problem.substitutions[Dc_dot_ux] = f"ux*{c}x + vx*{c}y + wx*{c}z"
             problem.substitutions[Dc_dot_uy] = f"uy*{c}x + vy*{c}y + wy*{c}z"
@@ -192,7 +193,7 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
 
             # κ_sgs = -C^2 Δₖ² ∂ₖuᵢ ∂ₖc ∂ᵢc / |∇c|²
             κ_sgs = f"κ{c}_sgs"
-            problem.substitutions[κ_sgs] = f"-C**2 * {uik_ck_ci} / {mod_Dc}"
+            problem.substitutions[κ_sgs] = f"max(0, -C**2 * {uik_ck_ci} / {mod_Dc})"
             self.substitute_subgridflux(problem, c)
 
 

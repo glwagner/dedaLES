@@ -37,7 +37,7 @@ while the relationship between subgrid tracer gradients and subgrid tracer flux 
 
 .. math::
 
-    F^\theta = \kappa_e \bnabla \theta \c
+    F^\theta = -\kappa_e \bnabla \theta \c
 
 where :math:`\nu_e` and :math:`\kappa_e` are the eddy viscosity and eddy diffusivity.
 The eddy viscosity and diffusivity are defined in terms of the 'predictor' eddy viscosity 
@@ -51,9 +51,9 @@ and
 
 .. math::
 
-    \kappa_e = \r{max} \left [ \kappa_e^\dagger, 0 \right ] \p
+    \kappa_e = \r{max} \left [ \kappa_e^\dagger, 0 \right ] \c
 
-These formulas ensure that :math:`\nu_e` and :math:`\kappa_e` are never less than 0.
+Ensure that :math:`\nu_e` and :math:`\kappa_e` are always greater than 0.
 
 The buoyancy-modified predictor eddy viscosity :math:`\nu_e^\dagger` 
 is determined via the direction-dependent formula (`Abkar et al 2017`_) 
@@ -62,24 +62,33 @@ is determined via the direction-dependent formula (`Abkar et al 2017`_)
 
     \nu_e^\dagger = - \frac{ \left ( \hat{\d}_k  u_i \right ) \left ( \hat{\d}_k  u_j \right )  S_{ij}
                                 - \left ( \hat{\d}_k  w \right ) \hat{\d}_k  b}
-                           {\left ( \d_{\ell}  u_m\right )^2}
+                           {\left ( \d_{\ell}  u_m\right )^2} \c
 
 
-where :math:`\hat{\d}_k` is the scaled gradient operator
+where :math:`\hat{\d}_k` is the anisotropic scaled gradient operator
 
 .. math::
 
     \hat{\d}_i = \sqrt{C_i} \Delta_i \d_i
 
-for 'filter width' :math:`\Delta_i` and Poincare constant :math:`C_i`. In general,
-the Poincare constant depends on the discretization method used in each direction.
-Because dedaLES is spectral in all directions, we have only one Poincare
-constant :math:`C_i = C`. Because of this, :math:`\nu_e^\dagger` can be written
+for 'filter width' :math:`\Delta_i` and Poincaré constant :math:`C_i`. 
+A key feature of AMD is inclusion of a direction-dependent, anisotropic filter
+width :math:`\Delta_i`. Nominally, the filter width is some constant factor of the
+grid spacing in the :math:`i^{\r{th}}` direction. In principle, the Poincaré constant 
+:math:`C_i` depends on the discretization method used in each direction.
+Because dedaLES is spectral in all directions, we use a single Poincaré constant
+constant :math:`C_i = C`, so that :math:`\nu_e^\dagger` becomes
 
 .. math::
 
     \nu_e^\dagger = - C^2 \frac{ \Delta_k^2 u_{i,k} u_{j,k} S_{ij} 
-                        - \Delta_k^2 w_{,k} b_{,k}}{\bnabla \b{:} \bu} \c
+                        - \Delta_k^2 w_{,k} b_{,k}}{\r{tr}(\bnabla \bu)} \c
+
+where the tracer, or first invariant of the tensor :math:`\bnabla \bu` is
+
+.. math::
+
+    \r{tr}(\bnabla \bu) = u_x^2 + v_x^2 + w_x^2 + u_y^2 + v_y^2 + w_y^2 + u_z^2 + v_z^2 + w_z^2
 
 Explicitly, :math:`\Delta_k u_{i,k} u_{j,k} S_{ij}` is
 
