@@ -59,7 +59,7 @@ msg = """
 """
 formattedmsg = msg.format(
     iters = iters, 
-    cores = MPI.COMM_WORLD.Get_size()
+    cores = MPI.COMM_WORLD.Get_size(),
     build_dns = buildtime_dns,
     build_sma = buildtime_smag,
     build_amd = buildtime_amd,

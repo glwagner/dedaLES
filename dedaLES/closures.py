@@ -6,7 +6,12 @@ class EddyViscosityClosure():
         pass
 
     def substitute_strainratetensor(self, problem):
-        # Strain-rate tensor of resolved flow
+        """
+        Defines the strain-rate tensor `Sij` in `problem`.
+
+        For the the indicies of the strain rate tensor, 
+        we use the shorthand x=1, y=2, z=3 for clarity.
+        """
         problem.substitutions['Sxx'] = "ux"
         problem.substitutions['Syy'] = "vy"
         problem.substitutions['Szz'] = "wz"
@@ -20,6 +25,10 @@ class EddyViscosityClosure():
             "Sxx*Sxx + Sxy*Sxy + Sxz*Sxz + Syx*Syx + Syy*Syy + Syz*Syz + Szx*Szx + Szy*Szy + Szz*Szz")
 
     def substitute_subgridstress(self, problem):
+        """
+        Defines the subgrid stress tensor `τij` and subgrid stress
+        divergence `(Fx_sgs, Fy_sgs, Fz_sgs)` in `problem`.
+        """
         # Subgrid stress proportional to eddy viscosity
         problem.substitutions['τxx'] = "2 * ν_sgs * Sxx"
         problem.substitutions['τxy'] = "2 * ν_sgs * Sxy"
@@ -37,6 +46,10 @@ class EddyViscosityClosure():
         problem.substitutions['Fz_sgs'] = "dx(τxz) + dy(τyz) + dz(τzz)"
 
     def substitute_subgridflux(self, problem, tracer):
+        """
+        Defines the subgrid tracer flux for `qcx` for `tracer=c` and
+        the subgrid flux divergence `Fc_sgs` in `problem`.
+        """
         # Subgrid buoyancy fluxes
         qx = f"q{tracer}x"
         qy = f"q{tracer}y"
@@ -60,9 +73,9 @@ class ConstantSmagorinsky(EddyViscosityClosure):
 
     Parameters
     ----------
-    δ_const : float
+    Δ_const : float
         Constant-filter size
-    Cs : float
+    C : float
         Poincare constant for grid-relative filter
     Sc : float
         Turbulent Schmidt number (Sc = ν_sgs / κ_sgs)
@@ -72,38 +85,38 @@ class ConstantSmagorinsky(EddyViscosityClosure):
     The subgrid viscosity is calculated with constant-filter and grid-relative
     filter sizes as
 
-        ν_sgs = [δ_const**2 + (Cs*δ_grid)**2] * sqrt(2*tr(S**2))
-        δ_grid = (δx * δy * δz)**(1/3)
+        ν_sgs = [Δ_const**2 + (C*Δ_grid)**2] * sqrt(2*tr(S**2))
+        Δ_grid = (Δx * Δy * Δz)**(1/3)
 
     where the grid-based fitler lengths are determined from the grid spacing
     and dealiasing factors D as
 
-        δx[i] = Dx * 2 * Δx[i] = Dx * (x[i+1] - x[i-1])
+        Δx[i] = Dx * 2 * Δx[i] = Dx * (x[i+1] - x[i-1])
 
     """
-    def __init__(self, δ_const=0, Cs=0.17, Sc=1):
-        self.δ_const = δ_const
-        self.Cs = Cs
+    def __init__(self, Δ_const=0, C=0.17, Sc=1):
+        self.Δ_const = Δ_const
+        self.C = C
         self.Sc = Sc
 
     def substitutions(self, problem, tracers=[]):
         # Construct grid-based filter field
-        δx = problem.domain.bases[0].dealias * 2 * problem.domain.grid_spacing(0)
-        δy = problem.domain.bases[1].dealias * 2 * problem.domain.grid_spacing(1)
-        δz = problem.domain.bases[2].dealias * 2 * problem.domain.grid_spacing(2)
+        Δx = problem.domain.bases[0].dealias * 2 * problem.domain.grid_spacing(0)
+        Δy = problem.domain.bases[1].dealias * 2 * problem.domain.grid_spacing(1)
+        Δz = problem.domain.bases[2].dealias * 2 * problem.domain.grid_spacing(2)
 
-        self.δ = problem.domain.new_field()
-        self.δ['g'] = (δx*δy*δz)**(1/3)
+        self.Δ = problem.domain.new_field()
+        self.Δ['g'] = (Δx*Δy*Δz)**(1/3)
 
         # Add subgrid parameters to problem
-        problem.parameters['δ0'] = self.δ_const
-        problem.parameters['δ'] = self.δ
-        problem.parameters['Cs'] = self.Cs
+        problem.parameters['Δ0'] = self.Δ_const
+        problem.parameters['Δ'] = self.Δ
+        problem.parameters['C_poincare'] = self.C
         problem.parameters['Sc_sgs'] = self.Sc
 
         # Add subgrid substitutions to problem
         self.substitute_strainratetensor(problem)
-        problem.substitutions['ν_sgs'] = "(δ0**2 + (Cs*δ)**2) * sqrt(2*tr_S2)"
+        problem.substitutions['ν_sgs'] = "(Δ0**2 + (C_poincare*Δ)**2) * sqrt(2*tr_S2)"
         self.substitute_subgridstress(problem)
 
         # Add tracer terms to problem
@@ -120,7 +133,7 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
 
     Parameters
     ----------
-    δ_const : float
+    Δ_const : float
         Constant-filter size
     C : float
         Poincare constant for grid-relative filter
@@ -131,42 +144,45 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
 
     def substitutions(self, problem, tracers=[]):
         # Construct grid-based filter field
-        δx = problem.domain.bases[0].dealias * 2 * problem.domain.grid_spacing(0)
-        δy = problem.domain.bases[1].dealias * 2 * problem.domain.grid_spacing(1)
-        δz = problem.domain.bases[2].dealias * 2 * problem.domain.grid_spacing(2)
+        Δx = problem.domain.bases[0].dealias * 2 * problem.domain.grid_spacing(0)
+        Δy = problem.domain.bases[1].dealias * 2 * problem.domain.grid_spacing(1)
+        Δz = problem.domain.bases[2].dealias * 2 * problem.domain.grid_spacing(2)
 
-        self.δx = problem.domain.new_field()
-        self.δy = problem.domain.new_field()
-        self.δz = problem.domain.new_field()
-        self.δx['g'] = δx
-        self.δy['g'] = δy
-        self.δz['g'] = δz
+        self.Δx = problem.domain.new_field()
+        self.Δy = problem.domain.new_field()
+        self.Δz = problem.domain.new_field()
+        self.Δx['g'] = Δx
+        self.Δy['g'] = Δy
+        self.Δz['g'] = Δz
 
         # Add subgrid parameters to problem
-        problem.parameters['δx'] = self.δx
-        problem.parameters['δy'] = self.δy
-        problem.parameters['δz'] = self.δz
-        problem.parameters['C'] = self.C
+        problem.parameters['Δx'] = self.Δx
+        problem.parameters['Δy'] = self.Δy
+        problem.parameters['Δz'] = self.Δz
+        problem.parameters['C_poincare'] = self.C
 
         # Add subgrid substitutions to problem
         self.substitute_strainratetensor(problem)
+
+        # Soft max function
+        problem.substitutions['zero_max(x)'] = "abs(x)"
 
         # AMD substitutions
         problem.substitutions['tr_uij'] = (
                 "ux*ux + uy*uy + uz*uz + vx*vx + vy*vy + vz*vz + wx*wx + wy*wy + wz*wz")
 
         problem.substitutions['uik_ujk_Sij'] = (
-                "   δx**2 * (ux*ux*Sxx + vx*vx*Syy + wx*wx*Szz + 2*ux*vx*Sxy + 2*ux*wx*Sxz + 2*vx*wx*Syz)" + 
-                " + δy**2 * (uy*uy*Sxx + vy*vy*Syy + wy*wy*Szz + 2*uy*vy*Sxy + 2*uy*wy*Sxz + 2*vy*wy*Syz)" + 
-                " + δz**2 * (uz*uz*Sxx + vz*vz*Syy + wz*wz*Szz + 2*uz*vz*Sxy + 2*uz*wz*Sxz + 2*vz*wz*Syz)")
+                "   Δx**2 * (ux*ux*Sxx + vx*vx*Syy + wx*wx*Szz + 2*ux*vx*Sxy + 2*ux*wx*Sxz + 2*vx*wx*Syz)" + 
+                " + Δy**2 * (uy*uy*Sxx + vy*vy*Syy + wy*wy*Szz + 2*uy*vy*Sxy + 2*uy*wy*Sxz + 2*vy*wy*Syz)" + 
+                " + Δz**2 * (uz*uz*Sxx + vz*vz*Syy + wz*wz*Szz + 2*uz*vz*Sxy + 2*uz*wz*Sxz + 2*vz*wz*Syz)")
 
         if self.stratified:
-            problem.substitutions['wk_bk'] = "δx**2*wx*bx + δy**2*wy*by + δz**2*wz*bz"
+            problem.substitutions['wk_bk'] = "Δx**2*wx*bx + Δy**2*wy*by + Δz**2*wz*bz"
         else:
             problem.substitutions['wk_bk'] = "0"
 
-        problem.substitutions['ν_pred_sgs'] = "-C**2 * (uik_ujk_Sij - wk_bk) / tr_uij"
-        problem.substitutions['ν_sgs'] = "max(0, ν_pred_sgs)"
+        problem.substitutions['ν_pred_sgs'] = "-C_poincare**2 * (uik_ujk_Sij - wk_bk) / tr_uij"
+        problem.substitutions['ν_sgs'] = "zero_max(ν_pred_sgs)"
 
         self.substitute_subgridstress(problem)
 
@@ -187,36 +203,11 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
             # uik_ck_ci = Δₖ² ∂ₖuᵢ ∂ₖc ∂ᵢc = Δₖ² ∂ₖc (∇c • ∂ₖu) 
             uik_ck_ci = f"uik_{c}k_{c}i"
             problem.substitutions[uik_ck_ci] = (
-                   f"δx**2 * {c}x * {Dc_dot_ux}" + 
-                f" + δy**2 * {c}y * {Dc_dot_uy}" + 
-                f" + δz**2 * {c}z * {Dc_dot_uz}")
+                   f"Δx**2 * {c}x * {Dc_dot_ux}" + 
+                f" + Δy**2 * {c}y * {Dc_dot_uy}" + 
+                f" + Δz**2 * {c}z * {Dc_dot_uz}")
 
             # κ_sgs = -C^2 Δₖ² ∂ₖuᵢ ∂ₖc ∂ᵢc / |∇c|²
             κ_sgs = f"κ{c}_sgs"
-            problem.substitutions[κ_sgs] = f"max(0, -C**2 * {uik_ck_ci} / {mod_Dc})"
+            problem.substitutions[κ_sgs] = f"zero_max(-C_poincare**2 * {uik_ck_ci} / {mod_Dc})"
             self.substitute_subgridflux(problem, c)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
