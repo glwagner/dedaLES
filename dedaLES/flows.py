@@ -48,7 +48,7 @@ class ChannelFlow():
     """
     A parent class for fluid models in channels.
     """
-    def __init__(self, nx, ny, nz, Lx, Ly, Lz, xleft, yleft, zbottom, incompressible=True):
+    def __init__(self, nx, ny, nz, Lx, Ly, Lz, xleft, yleft, zbottom): 
 
         # Default origin: (-Lx/2, -Ly/2, -Lz)
         if xleft is None: xleft = -Lx/2
@@ -71,15 +71,10 @@ class ChannelFlow():
         self.Ly = Ly
         self.Lz = Lz
 
-        self.incompressible = incompressible
-
     # Boundary condition API.
     def set_nopenetration_bc_top(self):
-        # Forbid a domain-averaged vertical velocity.
-        if self.incompressible:
-            self.problem.add_bc("right(w) = 0", condition="(nx != 0) or (ny != 0)") 
-        else:
-            self.problem.add_bc("right(w) = 0")
+        # Forbid domain-averaged vertical velocity.
+        self.problem.add_bc("right(w) = 0", condition="(nx != 0) or (ny != 0)") 
 
     def set_nopenetration_bc_bottom(self):
         self.problem.add_bc("left(w) = 0")

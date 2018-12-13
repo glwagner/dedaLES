@@ -1,4 +1,4 @@
-from .closures import ConstantSmagorinsky
+from .closures import ConstantSmagorinsky, AnisotropicMinimumDissipation
 from .flows import BoussinesqChannelFlow
 
 from .utils import random_noise, mpiprint

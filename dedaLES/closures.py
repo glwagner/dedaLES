@@ -1,4 +1,4 @@
-class LESClosure():
+class EddyViscosityClosure():
     """
     Generic LES closure.
     """
@@ -38,20 +38,23 @@ class LESClosure():
 
     def substitute_subgridflux(self, problem, tracer):
         # Subgrid buoyancy fluxes
-        qx = "q%sx" %tracer
-        qy = "q%sy" %tracer
-        qz = "q%sz" %tracer
+        qx = f"q{tracer}x"
+        qy = f"q{tracer}y"
+        qz = f"q{tracer}z"
 
-        problem.substitutions[qx] = "- κ_sgs * dx(%s)" %tracer
-        problem.substitutions[qy] = "- κ_sgs * dy(%s)" %tracer
-        problem.substitutions[qz] = "- κ_sgs * dz(%s)" %tracer
-        problem.substitutions['F%s_sgs' %tracer] = "- dx(%s) - dy(%s) - dz(%s)" %(qx, qy, qz)
+        # Diffusivity for tracer
+        κ_sgs = f"κ{tracer}_sgs"
+
+        problem.substitutions[qx] = f"- {κ_sgs} * dx({tracer})" 
+        problem.substitutions[qy] = f"- {κ_sgs} * dy({tracer})"
+        problem.substitutions[qz] = f"- {κ_sgs} * dz({tracer})"
+        problem.substitutions[f"F{tracer}_sgs"] = f"- dx({qx}) - dy({qy}) - dz({qz})"
 
     def add_closure_substitutions(self):
         pass
 
 
-class ConstantSmagorinsky(LESClosure):
+class ConstantSmagorinsky(EddyViscosityClosure):
     """
     Constant Smagorinsky closure for Large Eddy Simulation.
 
@@ -61,6 +64,8 @@ class ConstantSmagorinsky(LESClosure):
         Constant-filter size
     Cs : float
         Poincare constant for grid-relative filter
+    Sc : float
+        Turbulent Schmidt number (Sc = ν_sgs / κ_sgs)
 
     Notes
     -----
@@ -76,9 +81,10 @@ class ConstantSmagorinsky(LESClosure):
         δx[i] = Dx * 2 * Δx[i] = Dx * (x[i+1] - x[i-1])
 
     """
-    def __init__(self, δ_const=0, Cs=0.17):
+    def __init__(self, δ_const=0, Cs=0.17, Sc=1):
         self.δ_const = δ_const
         self.Cs = Cs
+        self.Sc = Sc
 
     def substitutions(self, problem, tracers=[]):
         # Construct grid-based filter field
@@ -93,6 +99,7 @@ class ConstantSmagorinsky(LESClosure):
         problem.parameters['δ0'] = self.δ_const
         problem.parameters['δ'] = self.δ
         problem.parameters['Cs'] = self.Cs
+        problem.parameters['Sc_sgs'] = self.Sc
 
         # Add subgrid substitutions to problem
         self.substitute_strainratetensor(problem)
@@ -100,6 +107,115 @@ class ConstantSmagorinsky(LESClosure):
         self.substitute_subgridstress(problem)
 
         # Add tracer terms to problem
-        problem.substitutions['κ_sgs'] = "ν_sgs"
         for tracer in tracers:
+            κ_sgs = f"κ{tracer}_sgs"
+            problem.substitutions[κ_sgs] = "ν_sgs / Sc_sgs"
             self.substitute_subgridflux(problem, tracer)
+
+
+
+class AnisotropicMinimumDissipation(EddyViscosityClosure):
+    """
+    Anisotropic minimum dissipation turbulence closure for Large Eddy Simulation.
+
+    Parameters
+    ----------
+    δ_const : float
+        Constant-filter size
+    C : float
+        Poincare constant for grid-relative filter
+    """
+    def __init__(self, C=0.2887, stratified=False):
+        self.C = C
+        self.stratified = stratified
+
+    def substitutions(self, problem, tracers=[]):
+        # Construct grid-based filter field
+        δx = problem.domain.bases[0].dealias * 2 * problem.domain.grid_spacing(0)
+        δy = problem.domain.bases[1].dealias * 2 * problem.domain.grid_spacing(1)
+        δz = problem.domain.bases[2].dealias * 2 * problem.domain.grid_spacing(2)
+
+        self.δx = problem.domain.new_field()
+        self.δy = problem.domain.new_field()
+        self.δz = problem.domain.new_field()
+        self.δx['g'] = δx
+        self.δy['g'] = δy
+        self.δz['g'] = δz
+
+        # Add subgrid parameters to problem
+        problem.parameters['δx'] = self.δx
+        problem.parameters['δy'] = self.δy
+        problem.parameters['δz'] = self.δz
+        problem.parameters['C'] = self.C
+
+        # Add subgrid substitutions to problem
+        self.substitute_strainratetensor(problem)
+
+        # AMD substitutions
+        problem.substitutions['tr_uij'] = (
+                "ux*ux + uy*uy + uz*uz + vx*vx + vy*vy + vz*vz + wx*wx + wy*wy + wz*wz")
+
+        problem.substitutions['uik_ujk_Sij'] = (
+                "   δx**2 * (ux*ux*Sxx + vx*vx*Syy + wx*wx*Szz + 2*ux*vx*Sxy + 2*ux*wx*Sxz + 2*vx*wx*Syz)" + 
+                " + δy**2 * (uy*uy*Sxx + vy*vy*Syy + wy*wy*Szz + 2*uy*vy*Sxy + 2*uy*wy*Sxz + 2*vy*wy*Syz)" + 
+                " + δz**2 * (uz*uz*Sxx + vz*vz*Syy + wz*wz*Szz + 2*uz*vz*Sxy + 2*uz*wz*Sxz + 2*vz*wz*Syz)")
+
+        if self.stratified:
+            problem.substitutions['wk_bk'] = "δx**2*wx*bx + δy**2*wy*by + δz**2*wz*bz"
+        else:
+            problem.substitutions['wk_bk'] = "0"
+
+        problem.substitutions['ν_sgs'] = "-C**2 * (uik_ujk_Sij - wk_bk) / tr_uij"
+
+        self.substitute_subgridstress(problem)
+
+        for c in tracers:
+            # mod_Dc = |∇c|²
+            mod_Dc = f"mod_D{c}"
+            problem.substitutions[mod_Dc] = f"{c}x**2 + {c}y**2 + {c}**2"
+
+            # Dc_dot_ui = ∇c • ∂ᵢu
+            Dc_dot_ux = f"n{c}_dot_ux"
+            Dc_dot_uy = f"n{c}_dot_uy"
+            Dc_dot_uz = f"n{c}_dot_uz"
+
+            problem.substitutions[Dc_dot_ux] = f"ux*{c}x + vx*{c}y + wx*{c}z"
+            problem.substitutions[Dc_dot_uy] = f"uy*{c}x + vy*{c}y + wy*{c}z"
+            problem.substitutions[Dc_dot_uz] = f"uz*{c}x + vz*{c}y + wz*{c}z"
+
+            # uik_ck_ci = Δₖ² ∂ₖuᵢ ∂ₖc ∂ᵢc = Δₖ² ∂ₖc (∇c • ∂ₖu) 
+            uik_ck_ci = f"uik_{c}k_{c}i"
+            problem.substitutions[uik_ck_ci] = (
+                   f"δx**2 * {c}x * {Dc_dot_ux}" + 
+                f" + δy**2 * {c}y * {Dc_dot_uy}" + 
+                f" + δz**2 * {c}z * {Dc_dot_uz}")
+
+            # κ_sgs = -C^2 Δₖ² ∂ₖuᵢ ∂ₖc ∂ᵢc / |∇c|²
+            κ_sgs = f"κ{c}_sgs"
+            problem.substitutions[κ_sgs] = f"-C**2 * {uik_ck_ci} / {mod_Dc}"
+            self.substitute_subgridflux(problem, c)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

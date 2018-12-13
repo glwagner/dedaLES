@@ -26,14 +26,37 @@ which introduces a turbulent Prandtl number (typically :math:`O(1)`) to relate
 eddy viscosity to eddy diffusivity, the AMD eddy diffusivity :math:`\kappa_e` 
 is determined by an analog of the method used to determine eddy visosity.
 
-The relationship between subgrid stress and rate of strain in the AMD model is 
+The AMD model is an eddy viscosity model in that the relationship between subgrid 
+stress and rate of strain is
 
 .. math::
 
-    F^\bu_{ij} = 2 \nu_e S_{ij} \, ,
+    F^\bu_{ij} = 2 \nu_e S_{ij} \c
 
-The buoyancy-modified eddy viscosity :math:`\nu_e` (`Akbar et al 2017`_`) 
-is determined by the direction-dependent formula
+while the relationship between subgrid tracer gradients and subgrid tracer flux is 
+
+.. math::
+
+    F^\theta = \kappa_e \bnabla \theta \c
+
+where :math:`\nu_e` and :math:`\kappa_e` are the eddy viscosity and eddy diffusivity.
+The eddy viscosity and diffusivity are defined in terms of the 'predictor' eddy viscosity 
+and diffusivities :math:`\nu_e^\dagger` and :math:`\kappa_e^\dagger` such that
+
+.. math::
+
+    \nu_e = \r{max} \left [ \nu_e^\dagger, 0 \right ] \c
+
+and
+
+.. math::
+
+    \kappa_e = \r{max} \left [ \kappa_e^\dagger, 0 \right ] \p
+
+These formulas ensure that :math:`\nu_e` and :math:`\kappa_e` are never less than 0.
+
+The buoyancy-modified predictor eddy viscosity :math:`\nu_e^\dagger` 
+is determined via the direction-dependent formula (`Abkar et al 2017`_) 
 
 .. math::
 
@@ -51,46 +74,46 @@ where :math:`\hat{\d}_k` is the scaled gradient operator
 for 'filter width' :math:`\Delta_i` and Poincare constant :math:`C_i`. In general,
 the Poincare constant depends on the discretization method used in each direction.
 Because dedaLES is spectral in all directions, we have only one Poincare
-constant :math:`C_i = C`. Because of this, :math:`\nu_e` can be written
+constant :math:`C_i = C`. Because of this, :math:`\nu_e^\dagger` can be written
 
 .. math::
 
-    \nu_e^\dagger = - C^2 \frac{ \Delta_k u_{i,k} u_{j,k} S_{ij} - \Delta_k w_k b_{,k}}{\bnabla \b{:} \bu} \c
+    \nu_e^\dagger = - C^2 \frac{ \Delta_k^2 u_{i,k} u_{j,k} S_{ij} 
+                        - \Delta_k^2 w_{,k} b_{,k}}{\bnabla \b{:} \bu} \c
 
-
-In long form, :math:`\Delta_k u_{i,k} u_{j,k} S_{ij}` becomes
+Explicitly, :math:`\Delta_k u_{i,k} u_{j,k} S_{ij}` is
 
 .. math::
 
-    \begin{equation}
     \begin{split}
     \Delta_k u_{i,k} u_{j,k} S_{ij} &= 
-           \delta_1 \left (u_x^2 S_{11} + v_x^2 S_{22} + w_x^2 S_{33} + 2 u_x v_x S_{12} + 2 u_x w_x S_{13} + 2 v_x w_x S_{23} \right ) + \\
-    \, & + \delta_2 \left (u_y^2 S_{11} + v_y^2 S_{22} + w_y^2 S_{33} + 2 u_y v_y S_{12} + 2 u_y w_y S_{13} + 2 v_y w_y S_{23} \right ) + \\
-    \, & + \delta_3 \left (u_z^2 S_{11} + v_z^2 S_{22} + w_z^2 S_{33} + 2 u_z v_z S_{12} + 2 u_z w_z S_{13} + 2 v_z w_z S_{23} \right ) \\ 
+    \,     \Delta_1^2 \left (u_x^2 S_{11} + v_x^2 S_{22} + w_x^2 S_{33} + 2 u_x v_x S_{12} + 2 u_x w_x S_{13} + 2 v_x w_x S_{23} \right ) \\
+    \, & + \Delta_2^2 \left (u_y^2 S_{11} + v_y^2 S_{22} + w_y^2 S_{33} + 2 u_y v_y S_{12} + 2 u_y w_y S_{13} + 2 v_y w_y S_{23} \right ) \\
+    \, & + \Delta_3^2 \left (u_z^2 S_{11} + v_z^2 S_{22} + w_z^2 S_{33} + 2 u_z v_z S_{12} + 2 u_z w_z S_{13} + 2 v_z w_z S_{23} \right ) \\ 
     \end{split}
-    \end{equation}
        
+while :math:`\Delta_k^2 w_{,k} b_{,k}` is
 
-Unlike the Smagorinsky models, the minimum-dissipation framework
-also supplies a minimum variance-destroying eddy diffusivity. For 
-a quantity :math:`\theta` the AMD eddy diffusivity is
+.. math::
+
+    \Delta_k^2 w_{,k} b_{,k} = \Delta_1^2 w_x b_x + \Delta_2^2 w_y b_y + \Delta_3^2 w_z b_z \p
+
+The predictor eddy diffusivity :math:`\kappa_e` for a quantity :math:`\theta` is
 
 .. math::
 
     \kappa_e^\dagger = 
-        - \frac{ C_k^2 \delta_k^2 u_{i,k} \theta_{,k} \theta_{,i}}{ \theta_{,\ell}^2 } 
+        - \frac{ C_k^2 \Delta_k^2 u_{i,k} \theta_{,k} \theta_{,i}}{ \theta_{,\ell}^2 } 
 
-    
-In practice, it is necessary to ensure that neither :math:`\nu_e` nor :math:`\kappa_e`
-become negative, so that the implemented eddy viscosity is
+Note that :math:`\Delta_k^2 u_{i,k} \theta_{,k} \theta_{,i}` expands to
 
 .. math::
-    
-    \nu_e = \r{max} \left [ 0, \nu_e^\dagger \right ] \c
 
-and similarly for :math:`\kappa_e`.
-
+    \Delta_k^2 u_{i,k} \theta_{,k} \theta_{,i} = \bnabla \theta \bcdot \big ( 
+          \Delta_1^2 \theta_x \bu_x 
+        + \Delta_2^2 \theta_y \bu_y 
+        + \Delta_3^2 \theta_z \bu_z \big ) \p
+        
 
 References
 ----------

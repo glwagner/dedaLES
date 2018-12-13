@@ -33,9 +33,10 @@ Ra = Ra_critical + ε
 Bz = -Ra*Pr                 # Unstable buoyancy gradient
 
 # Construct model
+closure = dedaLES.AnisotropicMinimumDissipation()
 model = dedaLES.BoussinesqChannelFlow(Lx=Lx, Ly=Ly, Lz=Lz, 
                                       nx=nx, ny=ny, nz=nz, 
-                                      ν=ν, κ=κ, B0=Bz*Lz, closure=None)
+                                      ν=ν, κ=κ, B0=Bz*Lz, closure=closure)
 
 model.set_bc("nopenetration", "top", "bottom")
 model.set_bc("freeslip", "top", "bottom")
