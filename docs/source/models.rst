@@ -1,5 +1,4 @@
 .. math::
-
     \newcommand{\b}[1]{\boldsymbol{#1}}
     \newcommand{\r}[1]{\mathrm{#1}}
     \newcommand{\bz}{\b{z}}
@@ -36,7 +35,7 @@ The rotating, stratified Boussinesq equations are
         + \nu \bnabla^2 \bu + \bnabla \bcdot \b{F}^{\bu} \c \\
      
     \d_t b + \bu \bcdot \bnabla b + w N^2 =
-        + \kappa \bnabla^2 b + \bnabla \bcdot \b{F}^b \c
+        \kappa \bnabla^2 b + \bnabla \bcdot \b{F}^b \c
 
 where :math:`\bu = (u, v, w)` is the velocity field, :math:`p` is pressure, 
 :math:`b` is buoyancy, :math:`f` is the Coriolis frequency, :math:`\nu` is viscosity,

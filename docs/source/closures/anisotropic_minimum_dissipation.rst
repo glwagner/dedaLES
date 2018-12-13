@@ -26,6 +26,9 @@ which introduces a turbulent Prandtl number (typically :math:`O(1)`) to relate
 eddy viscosity to eddy diffusivity, the AMD eddy diffusivity :math:`\kappa_e` 
 is determined by an analog of the method used to determine eddy visosity.
 
+Basic form
+----------
+
 The AMD model is an eddy viscosity model in that the relationship between subgrid 
 stress and rate of strain is
 
@@ -37,25 +40,30 @@ while the relationship between subgrid tracer gradients and subgrid tracer flux 
 
 .. math::
 
-    F^\theta = -\kappa_e \bnabla \theta \c
+    \b{F}^\theta = -\kappa_e \bnabla \theta \c
 
 where :math:`\nu_e` and :math:`\kappa_e` are the eddy viscosity and eddy diffusivity.
-The eddy viscosity and diffusivity are defined in terms of the 'predictor' eddy viscosity 
-and diffusivities :math:`\nu_e^\dagger` and :math:`\kappa_e^\dagger` such that
+The eddy viscosity and diffusivity are defined in terms of eddy viscosity  
+and diffusivity 'predictors' :math:`\nu_e^\dagger` and :math:`\kappa_e^\dagger`, 
+such that
 
 .. math::
 
-    \nu_e = \r{max} \left [ \nu_e^\dagger, 0 \right ] \c
+    \nu_e = \r{max} \left [ 0, \nu_e^\dagger \right ] \c
 
 and
 
 .. math::
 
-    \kappa_e = \r{max} \left [ \kappa_e^\dagger, 0 \right ] \c
+    \kappa_e = \r{max} \left [ 0, \kappa_e^\dagger \right ] \c
 
-Ensure that :math:`\nu_e` and :math:`\kappa_e` are always greater than 0.
+These formulas ensure that :math:`\nu_e` and :math:`\kappa_e` are 
+always greater than :math:`0`.
 
-The buoyancy-modified predictor eddy viscosity :math:`\nu_e^\dagger` 
+The eddy viscosity predictor
+----------------------------
+
+The buoyancy-modified eddy viscosity predictor :math:`\nu_e^\dagger` 
 is determined via the direction-dependent formula (`Abkar et al 2017`_) 
 
 .. math::
@@ -72,11 +80,11 @@ where :math:`\hat{\d}_k` is the anisotropic scaled gradient operator
     \hat{\d}_i = \sqrt{C_i} \Delta_i \d_i
 
 for 'filter width' :math:`\Delta_i` and Poincaré constant :math:`C_i`. 
-A key feature of AMD is inclusion of a direction-dependent, anisotropic filter
-width :math:`\Delta_i`. Nominally, the filter width is some constant factor of the
+A key feature of the AMD scheme is the direction-dependent, anisotropic filter
+width :math:`\Delta_i`. The filter width is typically defined as a multiple of the 
 grid spacing in the :math:`i^{\r{th}}` direction. In principle, the Poincaré constant 
 :math:`C_i` depends on the discretization method used in each direction.
-Because dedaLES is spectral in all directions, we use a single Poincaré constant
+Because dedaLES is spectral in all directions, we use one single Poincaré constant
 constant :math:`C_i = C`, so that :math:`\nu_e^\dagger` becomes
 
 .. math::
@@ -107,7 +115,10 @@ while :math:`\Delta_k^2 w_{,k} b_{,k}` is
 
     \Delta_k^2 w_{,k} b_{,k} = \Delta_1^2 w_x b_x + \Delta_2^2 w_y b_y + \Delta_3^2 w_z b_z \p
 
-The predictor eddy diffusivity :math:`\kappa_e` for a quantity :math:`\theta` is
+The eddy diffusivity predictor
+------------------------------
+
+The eddy diffusivity predictor :math:`\kappa_e` for a quantity :math:`\theta` is
 
 .. math::
 
@@ -123,6 +134,7 @@ Note that :math:`\Delta_k^2 u_{i,k} \theta_{,k} \theta_{,i}` expands to
         + \Delta_2^2 \theta_y \bu_y 
         + \Delta_3^2 \theta_z \bu_z \big ) \p
         
+`Abkar et al 2016`_ recommend :math:`C=1/\sqrt{12}` for a spectral method.
 
 References
 ----------
