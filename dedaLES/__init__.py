@@ -1,5 +1,7 @@
+from .boussinesq import BoussinesqChannelFlow
+from .navier_stokes import NavierStokesTriplyPeriodicFlow
+
 from .closures import ConstantSmagorinsky, AnisotropicMinimumDissipation
-from .flows import BoussinesqChannelFlow
 
 from .utils import random_noise, mpiprint
 

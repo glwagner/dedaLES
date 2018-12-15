@@ -1,3 +1,29 @@
+def add_closure_variables(primitive_variables, closure):
+    return primitive_variables
+
+def add_closure_substitutions(problem, closure, tracers=[]):
+    """
+    Add closure substitutions to the problem.
+    """
+    if closure is None:
+        # No parameterized subgrid fluxes
+        problem.substitutions['Fx_sgs'] = "0"
+        problem.substitutions['Fy_sgs'] = "0"
+        problem.substitutions['Fz_sgs'] = "0"
+        for c in tracers:
+            problem.substitutions[f'F{c}_sgs'] = "0"
+    else:
+        # closure.equations(problem, tracers=tracers)
+        closure.add_substitutions(problem, tracers=tracers)
+
+
+def add_closure_equations(problem, closure, tracers=[]):
+    """
+    Add closure equations to the problem.
+    """
+    pass
+ 
+
 class EddyViscosityClosure():
     """
     Generic LES closure.
@@ -5,26 +31,40 @@ class EddyViscosityClosure():
     def __init__(self):
         pass
 
-    def substitute_strainratetensor(self, problem):
+    def add_substitutions_strain_rate_tensor(self, problem, u='u', v='v', w='w'):
         """
         Defines the strain-rate tensor `Sij` in `problem`.
 
         For the the indicies of the strain rate tensor, 
         we use the shorthand x=1, y=2, z=3 for clarity.
+
+        Args
+        ----
+        problem : de.Problem
+            dedalus problem to which the substitiutions are added        
+
+        u : str
+            Name of the flow field in the x-direction
+
+        v : str
+            Name of the flow field in the y-direction
+
+        w : str
+            Name of the flow field in the z-direction
         """
-        problem.substitutions['Sxx'] = "ux"
-        problem.substitutions['Syy'] = "vy"
-        problem.substitutions['Szz'] = "wz"
-        problem.substitutions['Sxy'] = "(uy + vx) / 2"
-        problem.substitutions['Syz'] = "(vz + wy) / 2"
-        problem.substitutions['Szx'] = "(wx + uz) / 2"
+        problem.substitutions['Sxx'] = f"{u}x"
+        problem.substitutions['Syy'] = f"{v}y"
+        problem.substitutions['Szz'] = f"{w}z"
+        problem.substitutions['Sxy'] = f"({u}y + {v}x) / 2"
+        problem.substitutions['Syz'] = f"({v}z + {w}y) / 2"
+        problem.substitutions['Szx'] = f"({w}x + {u}z) / 2"
         problem.substitutions['Syx'] = "Sxy"
         problem.substitutions['Szy'] = "Syz"
         problem.substitutions['Sxz'] = "Szx"
         problem.substitutions['tr_S2'] = (
             "Sxx*Sxx + Sxy*Sxy + Sxz*Sxz + Syx*Syx + Syy*Syy + Syz*Syz + Szx*Szx + Szy*Szy + Szz*Szz")
 
-    def substitute_subgridstress(self, problem):
+    def add_substitutions_subgrid_stress(self, problem):
         """
         Defines the subgrid stress tensor `τij` and subgrid stress
         divergence `(Fx_sgs, Fy_sgs, Fz_sgs)` in `problem`.
@@ -45,7 +85,7 @@ class EddyViscosityClosure():
         problem.substitutions['Fy_sgs'] = "dx(τxy) + dy(τyy) + dz(τzy)"
         problem.substitutions['Fz_sgs'] = "dx(τxz) + dy(τyz) + dz(τzz)"
 
-    def substitute_subgridflux(self, problem, tracer):
+    def add_substitutions_subgrid_flux(self, problem, tracer):
         """
         Defines the subgrid tracer flux for `qcx` for `tracer=c` and
         the subgrid flux divergence `Fc_sgs` in `problem`.
@@ -99,7 +139,7 @@ class ConstantSmagorinsky(EddyViscosityClosure):
         self.C = C
         self.Sc = Sc
 
-    def substitutions(self, problem, tracers=[]):
+    def add_substitutions(self, problem, tracers=[]):
         # Construct grid-based filter field
         Δx = problem.domain.bases[0].dealias * 2 * problem.domain.grid_spacing(0)
         Δy = problem.domain.bases[1].dealias * 2 * problem.domain.grid_spacing(1)
@@ -115,34 +155,35 @@ class ConstantSmagorinsky(EddyViscosityClosure):
         problem.parameters['Sc_sgs'] = self.Sc
 
         # Add subgrid substitutions to problem
-        self.substitute_strainratetensor(problem)
+        self.add_substitutions_strain_rate_tensor(problem)
         problem.substitutions['ν_sgs'] = "(Δ0**2 + (C_poincare*Δ)**2) * sqrt(2*tr_S2)"
-        self.substitute_subgridstress(problem)
+        self.add_substitutions_subgrid_stress(problem)
 
         # Add tracer terms to problem
         for tracer in tracers:
             κ_sgs = f"κ{tracer}_sgs"
             problem.substitutions[κ_sgs] = "ν_sgs / Sc_sgs"
-            self.substitute_subgridflux(problem, tracer)
+            self.add_substitutions_subgrid_flux(problem, tracer)
 
 
 
 class AnisotropicMinimumDissipation(EddyViscosityClosure):
     """
-    Anisotropic minimum dissipation turbulence closure for Large Eddy Simulation.
+    Anisotropic minimum dissipation (AMD) turbulence closure for Large Eddy Simulation.
 
     Parameters
     ----------
-    Δ_const : float
-        Constant-filter size
     C : float
-        Poincare constant for grid-relative filter
+        Poincare constant
+
+    stratified : bool
+        Set to 'True' to use the stratified version of AMD
     """
     def __init__(self, C=0.2887, stratified=False):
         self.C = C
         self.stratified = stratified
 
-    def substitutions(self, problem, tracers=[]):
+    def add_substitutions(self, problem, tracers=[]):
         # Construct grid-based filter field
         Δx = problem.domain.bases[0].dealias * 2 * problem.domain.grid_spacing(0)
         Δy = problem.domain.bases[1].dealias * 2 * problem.domain.grid_spacing(1)
@@ -162,10 +203,10 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
         problem.parameters['C_poincare'] = self.C
 
         # Add subgrid substitutions to problem
-        self.substitute_strainratetensor(problem)
+        self.add_substitutions_strain_rate_tensor(problem, u=u, v=v, w=w)
 
         # Soft max function
-        problem.substitutions['zero_max(x)'] = "abs(x)"
+        problem.substitutions['zero_max(x)'] = "0.5 * (abs(x) + x)"
 
         # AMD substitutions
         problem.substitutions['tr_uij'] = (
@@ -181,10 +222,9 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
         else:
             problem.substitutions['wk_bk'] = "0"
 
-        problem.substitutions['ν_pred_sgs'] = "-C_poincare**2 * (uik_ujk_Sij - wk_bk) / tr_uij"
-        problem.substitutions['ν_sgs'] = "zero_max(ν_pred_sgs)"
+        problem.substitutions['ν_sgs'] = "zero_max(-C_poincare**2 * (uik_ujk_Sij - wk_bk) / tr_uij)"
 
-        self.substitute_subgridstress(problem)
+        self.add_substitutions_subgrid_stress(problem)
 
         for c in tracers:
             # mod_Dc = |∇c|²
@@ -210,4 +250,4 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
             # κ_sgs = -C^2 Δₖ² ∂ₖuᵢ ∂ₖc ∂ᵢc / |∇c|²
             κ_sgs = f"κ{c}_sgs"
             problem.substitutions[κ_sgs] = f"zero_max(-C_poincare**2 * {uik_ck_ci} / {mod_Dc})"
-            self.substitute_subgridflux(problem, c)
+            self.add_substitutions_subgrid_flux(problem, c)
