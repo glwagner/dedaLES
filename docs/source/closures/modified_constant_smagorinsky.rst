@@ -10,22 +10,20 @@
     \newcommand{\c}{\, ,}
 
 
-Modified Constant Smagorinsky
+Modified constant Smagorinsky
 =============================
 
-In modified constant Smagorinsky, the subgrid stress
-defined in :ref:`constant Smagorinsky` is modified by
-a 'buoyancy factor' :math:`\lambda` such that 
+The modified constant Smagorinsky closure attempts to improve
+the :ref:`constant Smagorinsky` closure in the presence of buoyancy
+gradients by multiplying the Smagorinsky subgrid stress by a 
+'buoyancy factor' :math:`\lambda` such that 
 
 .. math::
 
     F^\bu_{ij} = \lambda \, \nu_e S_{ij} \p
 
-The eddy viscosity :math:`\nu_e` and 
-eddy diffusivity are defined as in :ref:`constant Smagorinsky`.
-The buoyancy factor, which is the only difference between 
-ordinary constant Smagorinsky and 'modified' constant Smagorinsky,
-is
+The eddy viscosity :math:`\nu_e` and strain tensor :math:`S_{ij}`
+are defined as in :ref:`constant Smagorinsky`. The buoyancy factor is
 
 .. math::
 
@@ -35,13 +33,16 @@ is
         \end{matrix} \right . \c
 
 where :math:`Pr` is the turbulent Prandtl number.
-When the flow is affected by stratification such that
+The subgrid tracer flux in :ref:`constant Smagorinsky` is not modified.
+
+When a flow is affected by stratification such that
 the Richardson-like number :math:`N^2/|S|^2` is greater 
-than zero the buoyancy factor reduces the effective subgrid stress.
+than zero, the buoyancy factor :math:`\lambda` acts to reduce 
+the subgrid stress.
 
 References
-==========
+----------
 
 - `Pressel et al 2015`_
 
-.. _Pressel et al: https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2015MS000496
+.. _Pressel et al 2015: https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2015MS000496
