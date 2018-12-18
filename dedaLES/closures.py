@@ -165,7 +165,7 @@ class ConstantSmagorinsky(EddyViscosityClosure):
         for c in tracers:
             κ_sgs = f"κ{c}_sgs"
             problem.substitutions[κ_sgs] = "ν_sgs / Sc_sgs"
-            self.add_substitutions_subgrid_flux(problem, tracer)
+            self.add_substitutions_subgrid_flux(problem, c)
 
 
 
