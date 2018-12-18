@@ -31,21 +31,19 @@ mpiexec python basic_example.py
 
 ## Fluid models
 
-* Boussinesq flow in a channel (with optional rotation)
+* `dedaLES.NavierStokesTriplyPeriodicFlow`: triply-periodic 'pure' Navier-Stokes
+* `dedaLES.BoussinesqChannelFlow`: Boussinesq flow in a channel (with optional rotation)
 
 ## LES Closures
 
 Currently implemented:
 
 * [constant Smagorinsky]
-
-Definitely planned:
-
 * [anisotropic minimum dissipation]
-* [modified constant Smagorinsky]
 
 Aspirational:
 
+* [modified constant Smagorinsky]
 * Dynamic Smagorinsky ([wikipedia][wiki_dyn_smag], [Germano et al. 1991])
 * Sullivan-McWilliams-Moeng ([Sullivan et al. 1994])
 

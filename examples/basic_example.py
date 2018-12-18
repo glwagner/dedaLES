@@ -1,25 +1,30 @@
 import sys; sys.path.append("..")
 
-import matplotlib.pyplot as plt
-import numpy as np
-from numpy import pi
-
 import dedaLES
 
-# Basic stuff
-closure = dedaLES.ConstantSmagorinsky()
-model = dedaLES.BoussinesqChannelFlow(Lx=2*pi, Ly=2*pi, Lz=1, nx=32, ny=32, nz=32, ν=1, κ=0.1, closure=closure)
-model.set_default_bcs()
-model.build_solver()
+from dedaLES import mpiprint
 
-# Initial condition
-Re = 100
-H = model.Lz/10
-B = Re**2 / H
-z0 = -model.Lz/2
-τ = np.sqrt(H/B)
+# Basics
+mpiprint('')
 
-b0 = -B * np.exp(-(model.z-z0)**2/(2*H**2)) # unstable blob
-model.set_b(b0)
+# 1. DNS of Navier-Stokes
+dns_model = dedaLES.NavierStokesTriplyPeriodicFlow(nx=4, ny=4, nz=4, ν=1)
+dns_model.build_solver()
 
-model.run(initial_dt=1e-2*τ, iterations=10, logcadence=1)
+mpiprint("\nDNS Navier-Stokes model built!\n")
+
+# 2. LES of Navier-Stokes
+les_model = dedaLES.NavierStokesTriplyPeriodicFlow(nx=4, ny=4, nz=4, ν=1, closure=dedaLES.ConstantSmagorinsky())
+les_model.build_solver()
+
+mpiprint("\nLES Navier-Stokes model built!\n")
+
+# 2. Boussinesq in a channel
+bouss_model = dedaLES.BoussinesqChannelFlow(nx=4, ny=4, nz=4, ν=1, κ=0.1)
+
+for bc in ["no penetration", "no slip", "no flux"]:
+    bouss_model.set_bc(bc, "top", "bottom")
+
+bouss_model.build_solver()
+
+mpiprint("\nBoussinesq model built!\n")

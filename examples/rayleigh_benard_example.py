@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 # Domain parameters
 nx = 64         # Horizontal resolution
-ny = 16         # Horizontal resolution
+ny = 64         # Horizontal resolution
 nz = 16         # Vertical resolution
 Lx = 25.0       # Domain horizontal extent
 Ly = 5.0        # Domain horizontal extent
@@ -33,22 +33,19 @@ Ra = Ra_critical + ε
 Bz = -Ra*Pr                 # Unstable buoyancy gradient
 
 # Construct model
-closure = dedaLES.AnisotropicMinimumDissipation()
-model = dedaLES.BoussinesqChannelFlow(Lx=Lx, Ly=Ly, Lz=Lz, 
-                                      nx=nx, ny=ny, nz=nz, 
+closure = None #dedaLES.AnisotropicMinimumDissipation()
+model = dedaLES.BoussinesqChannelFlow(Lx=Lx, Ly=Ly, Lz=Lz, nx=nx, ny=ny, nz=nz, 
                                       ν=ν, κ=κ, B0=Bz*Lz, closure=closure)
 
-model.set_bc("nopenetration", "top", "bottom")
-model.set_bc("freeslip", "top", "bottom")
+model.set_bc("no penetration", "top", "bottom")
+model.set_bc("free slip", "top", "bottom")
 model.problem.add_bc("right(b) = B0")
 model.problem.add_bc("left(b) = 0")
 
 model.build_solver()
 
-# Random perturbations, initialized globally for same results in parallel
+# Iniital condition: unstable buoyancy grad + random perturbations
 noise = dedaLES.random_noise(model.domain)
-
-# Linear background + perturbations damped at walls
 z = model.z
 pert = a * noise * z * (Lz - z)
 b0 = Bz*(z - pert)
@@ -60,12 +57,18 @@ model.solver.stop_wall_time = 60 * 60.
 model.solver.stop_iteration = np.inf
 
 # Analysis
-snap = model.solver.evaluator.add_file_handler('snapshots', sim_dt=0.2, 
-                                               max_writes=10)
+if closure is None:
+    closure_name = 'DNS'
+else:
+    closure_name = closure.__class__.__name__
+
+snap = model.solver.evaluator.add_file_handler(
+        "snapshots_rayleigh_benard_{:s}".format(closure_name), sim_dt=0.2, max_writes=10)
 snap.add_task("interp(b, z=0)", scales=1, name='b midplane')
 snap.add_task("interp(u, z=0)", scales=1, name='u midplane')
 snap.add_task("interp(v, z=0)", scales=1, name='v midplane')
 snap.add_task("interp(w, z=0)", scales=1, name='w midplane')
+snap.add_task("integ(b, 'z')", name='b integral x4', scales=4)
 
 # CFL
 CFL = flow_tools.CFL(model.solver, initial_dt=1e-6, cadence=5, 
