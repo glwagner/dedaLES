@@ -18,28 +18,32 @@ def add_parameters(problem, **params):
     for name, value in params.items():
         problem.parameters[name] = value
 
-def add_first_derivative_substitutions(problem, coordinate='x', variables=[]):
+def add_first_derivative_substitutions(problem, variables, dims):
     """
-    Add first-derivative substitutions for `variables` to problem.
+    Add first-derivative substitutions for `variables` to `problem`.
 
     Args
     ----
-        coordinate : (str)
-            Coordinate along which the derivative is taken
-
-        variables : (list)
+        variables : str or list
             List of variables to make subsitutions for
+
+        dims : str or list
+            Dimensions along which derivatives are taken
 
     Example
     -------
-    >> add_first_derivative_substitutions(problem, coordinate='x', variables=['u'])
+    >> add_first_derivative_substitutions(problem, 'u', 'x')
 
     is equivalent to
 
     >> problem.substitutions['ux'] = "dx(u)"  
     """
-    for var in variables:
-        problem.substitutions[var+coordinate] = f"d{coordinate}({var})"
+    if type(dims) is str: dims = [dims]
+    if type(variables) is str: variables = [variables]
+
+    for x in dims:
+        for u in variables:
+            problem.substitutions[u+x] = f"d{x}({u})"
 
 def bind_parameters(obj, **params):
     """
