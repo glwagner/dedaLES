@@ -51,8 +51,7 @@ class NavierStokesTriplyPeriodicFlow(Flow):
         Lx = 2*pi,      # [m]
         Ly = 2*pi,      # [m]
         Lz = 2*pi,      # [m]
-        f  = 0.0,       # Coriolis parameter [s⁻¹]
-        ν  = 1.05e-6,   # Kinematic viscosity [m²/s]
+        ν = 1.05e-6,    # Kinematic viscosity [m²/s]
 
         # Background fields:
         ub = "0",
@@ -80,16 +79,16 @@ class NavierStokesTriplyPeriodicFlow(Flow):
         self.y = domain.grid(1)
         self.z = domain.grid(2)
 
-        bind_parameters(self, f=f, ν=ν, **params)
+        bind_parameters(self, ν=ν, **params)
 
         # Problem set-up
-        primitive_variables = ['p', 'u', 'v', 'w']
-        variables = add_closure_variables(primitive_variables, closure)
+        variables = ['p', 'u', 'v', 'w']
+        add_closure_variables(variables, closure)
 
         self.problem = problem = de.IVP(domain, variables=variables, time='t')
 
-        add_parameters(problem, f=f, ν=ν, **params)
-        bind_parameters(self, f=f, ν=ν, **params)
+        add_parameters(problem, ν=ν, **params)
+        bind_parameters(self, ν=ν, **params)
 
         problem.substitutions['ub'] = ub
         problem.substitutions['vb'] = vb
@@ -118,18 +117,18 @@ class NavierStokesTriplyPeriodicFlow(Flow):
         add_closure_substitutions(problem, closure)
         add_closure_equations(problem, closure)
 
-        problem.substitutions['div(ux, uy, uz)'] = "dx(ux) + dy(uy) + dz(uz)"
+        problem.substitutions['div(f1, f2, f3)'] = "dx(f1) + dy(f2) + dz(f3)"
 
         ## Momentum equations:
         # Primary linear terms
-        linear_x = "px - f*v - ν*div(ux, uy, uz)" 
-        linear_y = "py + f*u - ν*div(vx, vy, vz)" 
-        linear_z = "pz       - ν*div(wx, wy, wz)" 
+        linear_x = "px - ν*div(ux, uy, uz)" 
+        linear_y = "py - ν*div(vx, vy, vz)" 
+        linear_z = "pz - ν*div(wx, wy, wz)" 
         
         # Linear background terms
-        linear_background_x = "pbx - f*vb - ν*div(ubx, uby, ubz)" 
-        linear_background_y = "pby + f*ub - ν*div(vbx, vby, vbz)" 
-        linear_background_z = "pbz        - ν*div(wbx, wby, wbz)" 
+        linear_background_x = "pbx - ν*div(ubx, uby, ubz)" 
+        linear_background_y = "pby - ν*div(vbx, vby, vbz)" 
+        linear_background_z = "pbz - ν*div(wbx, wby, wbz)" 
 
         xmom = f"dt(u) + {linear_x} = - {linear_background_x} - U*Ux - V*Uy - W*Uz + Fx_sgs"
         ymom = f"dt(v) + {linear_y} = - {linear_background_y} - U*Vx - V*Vy - W*Vz + Fy_sgs"
@@ -140,7 +139,10 @@ class NavierStokesTriplyPeriodicFlow(Flow):
         problem.add_equation(zmom)
 
         # Continuity equation
-        problem.add_equation("ux + vy + wz = - ubx - vby - wbz")
+        problem.add_equation("ux + vy + wz = - ubx - vby - wbz",
+                             condition="(nx != 0) or (ny != 0) or (nz != 0)")
+
+        problem.add_equation("p = 0", condition="(nx == 0) and (ny == 0) and (nz == 0)")
 
     def build_solver(self, timestepper='RK443'):
         """
@@ -152,12 +154,3 @@ class NavierStokesTriplyPeriodicFlow(Flow):
         self.u = self.solver.state['u']
         self.v = self.solver.state['v']
         self.w = self.solver.state['w']
-
-    def log(self, logger, dt):
-        """
-        Print messages.
-        """
-        logger.info('Iteration: %i, Time: %e, dt: %e' %(self.solver.iteration, self.solver.sim_time, dt))
-
-        for name, task in self.log_tasks.items(): 
-            logger.info("{} = {}".format(name, task(self)))

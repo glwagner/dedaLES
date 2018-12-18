@@ -34,12 +34,11 @@ Bz = -Ra*Pr                 # Unstable buoyancy gradient
 
 # Construct model
 closure = dedaLES.AnisotropicMinimumDissipation()
-model = dedaLES.BoussinesqChannelFlow(Lx=Lx, Ly=Ly, Lz=Lz, 
-                                      nx=nx, ny=ny, nz=nz, 
+model = dedaLES.BoussinesqChannelFlow(Lx=Lx, Ly=Ly, Lz=Lz, nx=nx, ny=ny, nz=nz, 
                                       ν=ν, κ=κ, B0=Bz*Lz, closure=closure)
 
-model.set_bc("nopenetration", "top", "bottom")
-model.set_bc("freeslip", "top", "bottom")
+model.set_bc("no penetration", "top", "bottom")
+model.set_bc("free slip", "top", "bottom")
 model.problem.add_bc("right(b) = B0")
 model.problem.add_bc("left(b) = 0")
 
@@ -60,8 +59,7 @@ model.solver.stop_wall_time = 60 * 60.
 model.solver.stop_iteration = np.inf
 
 # Analysis
-snap = model.solver.evaluator.add_file_handler('snapshots', sim_dt=0.2, 
-                                               max_writes=10)
+snap = model.solver.evaluator.add_file_handler('snapshots', sim_dt=0.2, max_writes=10)
 snap.add_task("interp(b, z=0)", scales=1, name='b midplane')
 snap.add_task("interp(u, z=0)", scales=1, name='u midplane')
 snap.add_task("interp(v, z=0)", scales=1, name='v midplane')

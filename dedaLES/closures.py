@@ -1,5 +1,6 @@
-def add_closure_variables(primitive_variables, closure):
-    return primitive_variables
+def add_closure_variables(variables, closure):
+    # variables = variables + closure.variables
+    pass
 
 def add_closure_substitutions(problem, closure, tracers=[]):
     """

@@ -1,11 +1,11 @@
 import numpy as np
 from mpi4py import MPI
 
-def random_noise(domain):
+def random_noise(domain, amplitude=1, seed=23):
+    rand = np.random.RandomState(seed=seed)
     gshape = domain.dist.grid_layout.global_shape(scales=1)
     slices = domain.dist.grid_layout.slices(scales=1)
-    rand = np.random.RandomState(seed=23)
-    return rand.standard_normal(gshape)[slices]
+    return amplitude*rand.standard_normal(gshape)[slices]
 
 def mpiprint(msg):
     if MPI.COMM_WORLD.Get_rank() is 0:
