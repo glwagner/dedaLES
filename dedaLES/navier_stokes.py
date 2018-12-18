@@ -53,11 +53,13 @@ class NavierStokesTriplyPeriodicFlow(Flow):
         Lz = 2*pi,      # [m]
         ν = 1.05e-6,    # Kinematic viscosity [m²/s]
 
-        # Background fields:
-        ub = "0",
-        vb = "0",
-        wb = "0",
-        pb = "0",
+        # "Background" (non-evolving) fields:
+        u_bg = "0",
+        v_bg = "0",
+        w_bg = "0",
+        p_bg = "0",
+
+        include_linear_bg = False, # Include linear background terms?
 
         closure = None,  # Subgrid closure
         **params         # Additional parameters to be added to dedalus problem
@@ -90,32 +92,22 @@ class NavierStokesTriplyPeriodicFlow(Flow):
         add_parameters(problem, ν=ν, **params)
         bind_parameters(self, ν=ν, **params)
 
-        problem.substitutions['ub'] = ub
-        problem.substitutions['vb'] = vb
-        problem.substitutions['wb'] = wb
-        problem.substitutions['pb'] = pb
+        problem.substitutions['u_bg'] = u_bg 
+        problem.substitutions['v_bg'] = v_bg
+        problem.substitutions['w_bg'] = w_bg
+        problem.substitutions['p_bg'] = p_bg
 
-        problem.substitutions['U'] = "u + ub"
-        problem.substitutions['V'] = "v + vb"
-        problem.substitutions['W'] = "w + wb"
+        problem.substitutions['U'] = "u + u_bg"
+        problem.substitutions['V'] = "v + v_bg"
+        problem.substitutions['W'] = "w + w_bg"
 
-        u = ['u', 'v', 'w', 'p']
-        add_first_derivative_substitutions(problem, coordinate='x', variables=u)
-        add_first_derivative_substitutions(problem, coordinate='y', variables=u)
-        add_first_derivative_substitutions(problem, coordinate='z', variables=u)
+        add_first_derivative_substitutions(problem, 
+            ['u', 'v', 'w', 'p', 'U', 'V', 'W', 'u_bg', 'v_bg', 'w_bg', 'p_bg'], 
+            ['x', 'y', 'z']
+        )
 
-        U = ['U', 'V', 'W']
-        add_first_derivative_substitutions(problem, coordinate='x', variables=U)
-        add_first_derivative_substitutions(problem, coordinate='y', variables=U)
-        add_first_derivative_substitutions(problem, coordinate='z', variables=U)
-
-        ub = ['ub', 'vb', 'wb', 'pb']
-        add_first_derivative_substitutions(problem, coordinate='x', variables=ub)
-        add_first_derivative_substitutions(problem, coordinate='y', variables=ub)
-        add_first_derivative_substitutions(problem, coordinate='z', variables=ub)
-
-        add_closure_substitutions(problem, closure)
-        add_closure_equations(problem, closure)
+        add_closure_substitutions(problem, closure, u='U', v='V', w='W')
+        add_closure_equations(problem, closure, u='U', v='V', w='W')
 
         problem.substitutions['div(f1, f2, f3)'] = "dx(f1) + dy(f2) + dz(f3)"
 
@@ -126,20 +118,25 @@ class NavierStokesTriplyPeriodicFlow(Flow):
         linear_z = "pz - ν*div(wx, wy, wz)" 
         
         # Linear background terms
-        linear_background_x = "pbx - ν*div(ubx, uby, ubz)" 
-        linear_background_y = "pby - ν*div(vbx, vby, vbz)" 
-        linear_background_z = "pbz - ν*div(wbx, wby, wbz)" 
+        if include_linear_bg_terms:
+            linear_bg_x = "p_bgx - ν*div(u_bgx, u_bgy, u_bgz)" 
+            linear_bg_y = "p_bgy - ν*div(v_bgx, v_bgy, v_bgz)" 
+            linear_bg_z = "p_bgz - ν*div(w_bgx, w_bgy, w_bgz)" 
+        else:
+            linear_bg_x = "0"
+            linear_bg_y = "0"
+            linear_bg_z = "0"
 
-        xmom = f"dt(u) + {linear_x} = - {linear_background_x} - U*Ux - V*Uy - W*Uz + Fx_sgs"
-        ymom = f"dt(v) + {linear_y} = - {linear_background_y} - U*Vx - V*Vy - W*Vz + Fy_sgs"
-        zmom = f"dt(w) + {linear_z} = - {linear_background_z} - U*Wx - V*Wy - W*Wz + Fz_sgs"
+        xmom = f"dt(u) + {linear_x} = - {linear_bg_x} - U*Ux - V*Uy - W*Uz + Fx_sgs"
+        ymom = f"dt(v) + {linear_y} = - {linear_bg_y} - U*Vx - V*Vy - W*Vz + Fy_sgs"
+        zmom = f"dt(w) + {linear_z} = - {linear_bg_z} - U*Wx - V*Wy - W*Wz + Fz_sgs"
                    
         problem.add_equation(xmom)
         problem.add_equation(ymom)
         problem.add_equation(zmom)
 
         # Continuity equation
-        problem.add_equation("ux + vy + wz = - ubx - vby - wbz",
+        pro_bglem.add_equation("ux + vy + wz = - u_bgx - v_bgy - w_bgz",
                              condition="(nx != 0) or (ny != 0) or (nz != 0)")
 
         problem.add_equation("p = 0", condition="(nx == 0) and (ny == 0) and (nz == 0)")
