@@ -27,7 +27,7 @@ def add_closure_equations(problem, closure, tracers=[]):
 
 class EddyViscosityClosure():
     """
-    Generic LES closure.
+    Generic LES closure based on an eddy viscosity and diffusivity.
     """
     def __init__(self):
         pass

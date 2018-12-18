@@ -56,5 +56,6 @@ def average_Re(model): return flow.volume_average('Re')
 def max_Re(model): return flow.max('Re')
     
 model.add_log_tasks(avg_Re=average_Re, max_Re=max_Re)
-model.stop_at(sim_time=np.inf, wall_time=np.inf, iteration=1000)
+
+model.stop_at(sim_time=np.inf, wall_time=np.inf, iteration=100)
 model.run(dt=dt, log_cadence=cadence)

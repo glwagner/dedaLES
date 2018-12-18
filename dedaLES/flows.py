@@ -40,7 +40,7 @@ class Flow():
         """
         self.solver.stop_sim_time = sim_time
         self.solver.stop_wall_time = wall_time
-        self.solver.stop_iteration = iteration
+        self.solver.stop_iteration = self.solver.iteration + iteration
 
     def set_field(self, phi, gridvalue):
         """Set `phi` as `gridvalue`. Calculate derivatives of `phi`.
