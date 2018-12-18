@@ -181,7 +181,7 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
     stratified : bool
         Set to 'True' to use the stratified version of AMD
     """
-    def __init__(self, C=1.0/np.sqrt(12), stratified=False):
+    def __init__(self, C=1/12, stratified=False):
         self.C = C
         self.stratified = stratified
 
@@ -252,7 +252,7 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
         else:
             problem.substitutions['wk_bk'] = "0"
 
-        problem.substitutions['ν_sgs'] = "zero_max(-C_poin**2 * (uik_ujk_Sij - wk_bk) / tr_uij)"
+        problem.substitutions['ν_sgs'] = "zero_max(C_poin * (wk_bk - uik_ujk_Sij) / tr_uij)"
 
         self.add_substitutions_subgrid_stress(problem)
 
@@ -279,5 +279,5 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
 
             # κ_sgs = -C^2 Δₖ² ∂ₖuᵢ ∂ₖc ∂ᵢc / |∇c|²
             κ_sgs = f"κ{c}_sgs"
-            problem.substitutions[κ_sgs] = f"zero_max(-C_poin**2 * {uik_ck_ci} / {mod_Dc})"
+            problem.substitutions[κ_sgs] = f"zero_max(-C_poin * {uik_ck_ci} / {mod_Dc})"
             self.add_substitutions_subgrid_flux(problem, c)
