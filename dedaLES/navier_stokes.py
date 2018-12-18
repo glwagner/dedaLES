@@ -59,7 +59,7 @@ class NavierStokesTriplyPeriodicFlow(Flow):
         w_bg = "0",
         p_bg = "0",
 
-        include_linear_bg = False, # Include linear background terms?
+        include_linear_bg = False, # Include linear background terms in model formulation
 
         closure = None,  # Subgrid closure
         **params         # Additional parameters to be added to dedalus problem
@@ -118,7 +118,7 @@ class NavierStokesTriplyPeriodicFlow(Flow):
         linear_z = "pz - ν*div(wx, wy, wz)" 
         
         # Linear background terms
-        if include_linear_bg_terms:
+        if include_linear_bg:
             linear_bg_x = "p_bgx - ν*div(u_bgx, u_bgy, u_bgz)" 
             linear_bg_y = "p_bgy - ν*div(v_bgx, v_bgy, v_bgz)" 
             linear_bg_z = "p_bgz - ν*div(w_bgx, w_bgy, w_bgz)" 

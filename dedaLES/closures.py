@@ -4,7 +4,7 @@ def add_closure_variables(variables, closure):
     # variables = variables + closure.variables
     pass
 
-def add_closure_substitutions(problem, closure, tracers=[]):
+def add_closure_substitutions(problem, closure, tracers=[], **kwargs):
     """
     Add closure substitutions to the problem.
     """
@@ -17,10 +17,10 @@ def add_closure_substitutions(problem, closure, tracers=[]):
             problem.substitutions[f'F{c}_sgs'] = "0"
     else:
         # closure.equations(problem, tracers=tracers)
-        closure.add_substitutions(problem, tracers=tracers)
+        closure.add_substitutions(problem, tracers=tracers, **kwargs)
 
 
-def add_closure_equations(problem, closure, tracers=[]):
+def add_closure_equations(problem, closure, **kwargs):
     """
     Add closure equations to the problem.
     """
@@ -141,7 +141,7 @@ class ConstantSmagorinsky(EddyViscosityClosure):
         self.C = C
         self.Sc = Sc
 
-    def add_substitutions(self, problem, tracers=[], u='u', v='v', w='w'):
+    def add_substitutions(self, problem, tracers=[], u='u', v='v', w='w', **kwargs):
         # Construct grid-based filter field
         Δx = problem.domain.bases[0].dealias * 2 * problem.domain.grid_spacing(0)
         Δy = problem.domain.bases[1].dealias * 2 * problem.domain.grid_spacing(1)
@@ -153,12 +153,12 @@ class ConstantSmagorinsky(EddyViscosityClosure):
         # Add subgrid parameters to problem
         problem.parameters['Δ0'] = self.Δ_const
         problem.parameters['Δ'] = self.Δ
-        problem.parameters['C_poincare'] = self.C
+        problem.parameters['C_poin'] = self.C
         problem.parameters['Sc_sgs'] = self.Sc
 
         # Add subgrid substitutions to problem
         self.add_substitutions_strain_rate_tensor(problem, u=u, v=v, w=w)
-        problem.substitutions['ν_sgs'] = "(Δ0**2 + (C_poincare*Δ)**2) * sqrt(2*tr_S2)"
+        problem.substitutions['ν_sgs'] = "(Δ0**2 + (C_poin*Δ)**2) * sqrt(2*tr_S2)"
         self.add_substitutions_subgrid_stress(problem)
 
         # Add tracer terms to problem
@@ -185,7 +185,7 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
         self.C = C
         self.stratified = stratified
 
-    def add_substitutions(self, problem, u='u', v='v', w='w', b='b', tracers=[]):
+    def add_substitutions(self, problem, u='u', v='v', w='w', b='b', tracers=[], **kwargs):
         """Add substitutions associated with the Anisotropic 
         Minimum Dissipation model to the `problem`.
 
@@ -225,7 +225,7 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
         problem.parameters['Δx'] = self.Δx
         problem.parameters['Δy'] = self.Δy
         problem.parameters['Δz'] = self.Δz
-        problem.parameters['C_poincare'] = self.C
+        problem.parameters['C_poin'] = self.C
 
         # Add subgrid substitutions to problem
         self.add_substitutions_strain_rate_tensor(problem, u=u, v=v, w=w)
@@ -252,7 +252,7 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
         else:
             problem.substitutions['wk_bk'] = "0"
 
-        problem.substitutions['ν_sgs'] = "zero_max(-C_poincare**2 * (uik_ujk_Sij - wk_bk) / tr_uij)"
+        problem.substitutions['ν_sgs'] = "zero_max(-C_poin**2 * (uik_ujk_Sij - wk_bk) / tr_uij)"
 
         self.add_substitutions_subgrid_stress(problem)
 
@@ -279,5 +279,5 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
 
             # κ_sgs = -C^2 Δₖ² ∂ₖuᵢ ∂ₖc ∂ᵢc / |∇c|²
             κ_sgs = f"κ{c}_sgs"
-            problem.substitutions[κ_sgs] = f"zero_max(-C_poincare**2 * {uik_ck_ci} / {mod_Dc})"
+            problem.substitutions[κ_sgs] = f"zero_max(-C_poin**2 * {uik_ck_ci} / {mod_Dc})"
             self.add_substitutions_subgrid_flux(problem, c)
