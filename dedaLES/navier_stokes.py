@@ -136,8 +136,8 @@ class NavierStokesTriplyPeriodicFlow(Flow):
         problem.add_equation(zmom)
 
         # Continuity equation
-        pro_bglem.add_equation("ux + vy + wz = - u_bgx - v_bgy - w_bgz",
-                             condition="(nx != 0) or (ny != 0) or (nz != 0)")
+        problem.add_equation("ux + vy + wz = - u_bgx - v_bgy - w_bgz",
+                                condition="(nx != 0) or (ny != 0) or (nz != 0)")
 
         problem.add_equation("p = 0", condition="(nx == 0) and (ny == 0) and (nz == 0)")
 
