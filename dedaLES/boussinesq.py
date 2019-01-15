@@ -91,8 +91,7 @@ class BoussinesqChannelFlow(ChannelFlow):
         add_parameters(problem, f=f, ν=ν, κ=κ, Nsq=Nsq, **params)
         bind_parameters(self, f=f, ν=ν, κ=κ, Nsq=Nsq, **params)
 
-        add_first_derivative_substitutions(problem, coordinate='x', variables=['u', 'v', 'w', 'b'])
-        add_first_derivative_substitutions(problem, coordinate='y', variables=['u', 'v', 'w', 'b'])
+        add_first_derivative_substitutions(problem, ['u', 'v', 'w', 'b'], ['x', 'y'])
 
         # LES Closure
         add_closure_substitutions(problem, closure, tracers=['b'])

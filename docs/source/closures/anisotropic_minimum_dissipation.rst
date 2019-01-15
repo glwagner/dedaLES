@@ -68,28 +68,26 @@ is determined via the direction-dependent formula (`Abkar et al 2017`_)
 
 .. math::
 
-    \nu_e^\dagger = - \frac{ \left ( \hat{\d}_k  u_i \right ) \left ( \hat{\d}_k  u_j \right )  S_{ij}
+    \nu_e^\dagger = - C \frac{ \left ( \hat{\d}_k  u_i \right ) \left ( \hat{\d}_k  u_j \right )  S_{ij}
                                 - \left ( \hat{\d}_k  w \right ) \hat{\d}_k  b}
                            {\left ( \d_{\ell}  u_m\right )^2} \c
 
 
-where :math:`\hat{\d}_k` is the anisotropic scaled gradient operator
+where :math:`\hat{\d}_k` is the anisotropic scaled gradient operator,
 
 .. math::
 
-    \hat{\d}_i = \sqrt{C_i} \Delta_i \d_i
+    \hat{\d}_i = \Delta_i \d_i
 
-for 'filter width' :math:`\Delta_i` and Poincaré constant :math:`C_i`. 
+for 'filter width' :math:`\Delta_i`, and :math:`C` is the Poincaré constant.
 A key feature of the AMD scheme is the direction-dependent, anisotropic filter
 width :math:`\Delta_i`. The filter width is typically defined as a multiple of the 
-grid spacing in the :math:`i^{\r{th}}` direction. In principle, the Poincaré constant 
-:math:`C_i` depends on the discretization method used in each direction.
-Because dedaLES is spectral in all directions, we use one single Poincaré constant
-constant :math:`C_i = C`, so that :math:`\nu_e^\dagger` becomes
+grid spacing in the :math:`i^{\r{th}}` direction.
+:math:`\nu_e^\dagger` then becomes
 
 .. math::
 
-    \nu_e^\dagger = - C^2 \frac{ \Delta_k^2 u_{i,k} u_{j,k} S_{ij} 
+    \nu_e^\dagger = - C \frac{ \Delta_k^2 u_{i,k} u_{j,k} S_{ij} 
                         - \Delta_k^2 w_{,k} b_{,k}}{\r{tr}(\bnabla \bu)} \c
 
 where the tracer, or first invariant of the tensor :math:`\bnabla \bu` is
@@ -123,7 +121,7 @@ The eddy diffusivity predictor :math:`\kappa_e` for a quantity :math:`\theta` is
 .. math::
 
     \kappa_e^\dagger = 
-        - \frac{ C_k^2 \Delta_k^2 u_{i,k} \theta_{,k} \theta_{,i}}{ \theta_{,\ell}^2 } 
+        - C \frac{ \Delta_k^2 u_{i,k} \theta_{,k} \theta_{,i}}{ \theta_{,\ell}^2 } 
 
 Note that :math:`\Delta_k^2 u_{i,k} \theta_{,k} \theta_{,i}` expands to
 
@@ -134,7 +132,7 @@ Note that :math:`\Delta_k^2 u_{i,k} \theta_{,k} \theta_{,i}` expands to
         + \Delta_2^2 \theta_y \bu_y 
         + \Delta_3^2 \theta_z \bu_z \big ) \p
         
-`Abkar et al 2016`_ recommend :math:`C=1/\sqrt{12}` for a spectral method.
+`Abkar et al 2016`_ recommend :math:`C=1/12` for a spectral method.
 
 References
 ----------
