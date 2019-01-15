@@ -18,88 +18,94 @@ import dedaLES
 
 logger = logging.getLogger(__name__)
 
+# From Table 2 in Kerr (1996):
 resolutions = {
-    1: {nh:  64, nz: 32},
-    2: {nh:  96, nz: 48},
-    3: {nh: 128, nz: 48},
-    4: {nh: 192, nz: 64},
-    5: {nh: 288, nz: 96} 
+    1: {'nh':  64, 'nz': 32},
+    2: {'nh':  96, 'nz': 48},
+    3: {'nh': 128, 'nz': 48},
+    4: {'nh': 192, 'nz': 64},
+    5: {'nh': 288, 'nz': 96} 
 }
 
-experiments = {
+kerr_parameters = {
     5000: { **resolutions[1],
-            Ra : 5e4,
-            t0 : 24.0,
-            tf : 44.0 },
-    10000: { **resolutions[1],
-            Ra : 1e5,
-            t0 : 24.0,
-            tf : 44.0 },
-    20000: { **resolutions[1]
-            Ra : 2e5,
-            t0 : 24.0,
-            tf : 44.0 },
-    40000: { **resolutions[3],
-            Ra : 4e5,
-            t0 : 26.0,
-            tf : 34.0 },
-    50000: { **resolutions[2],
-            Ra : 4e5,
-            t0 : 27.0,
-            tf : 40.0 },
+            't0' : 24.0,
+            'tf' : 44.0 },
+   10000: { **resolutions[1],
+            't0' : 24.0,
+            'tf' : 44.0 },
+   20000: { **resolutions[1]
+            't0' : 24.0,
+            'tf' : 44.0 },
+   40000: { **resolutions[3],
+            't0' : 26.0,
+            'tf' : 34.0 },
+   50000: { **resolutions[2],
+            't0' : 27.0,
+            'tf' : 40.0 },
+  100000: { **resolutions[3],
+            't0' : 26.0,
+            'tf' : 1000.0 },
+  250000: { **resolutions[3],
+            't0' : 26.0,
+            'tf' : 36.0 },
+  500000: { **resolutions[4],
+            't0' : 49.0,
+            'tf' : 64.0 },
+ 1000000: { **resolutions[4],
+            't0' : 28.0,
+            'tf' : 37.0 },
+ 2000000: { **resolutions[5],
+            't0' : 24.0,
+            'tf' : 140.0 }
 } 
-            
+
     
-# Domain parameters
-nx = 64         # Horizontal resolution
-ny = 64         # Horizontal resolution
-nz = 16         # Vertical resolution
-Lx = 25.0       # Domain horizontal extent
-Ly = 5.0        # Domain horizontal extent
-Lz = 1.0        # Domain vertical extent
+# Rayleigh number
+Ra = 5000
 
-# Parameters
-Pr = 1.0        # Prandtl number
-Ra = 2e4        # Rayleigh number
-f  = 0.0        # Coriolis parameter
-a  = 1e-3       # Noise amplitude for initial condition
+# Fixed parameters
+nx = ny = kerr_parameters[Ra]['nh']
+nz = kerr_parameters[Ra]['nz']
+Lx = Ly = 12.0          # Horizonal extent
+Lz = 2.0                # Vertical extent
+Pr = 0.7                # Prandtl number
+f  = 0.0                # Coriolis parameter
+a  = 1e-3               # Noise amplitude for initial condition
 
-κ  = Pr         # Thermal diffusivity 
-Bz = -Ra*Pr     # Unstable buoyancy gradient
-ν  = 1/Re       # Viscosity 
+# Calculated parameters
+κ  = Pr                 # Thermal diffusivity 
+Bz = -Ra*Pr             # Unstable buoyancy gradient
+ν  = -Lz^4*Bz/(Ra*κ)    # Viscosity 
 
 # Construct model
 closure = None #dedaLES.AnisotropicMinimumDissipation()
-model = dedaLES.BoussinesqChannelFlow(Lx=Lx, Ly=Ly, Lz=Lz, nx=nx, ny=ny, nz=nz, 
+model = dedaLES.BoussinesqChannelFlow(Lx=Lx, Ly=Ly, Lz=Lz, zbottom=-Lz/2, nx=nx, ny=ny, nz=nz, 
                                       ν=ν, κ=κ, B0=Bz*Lz, closure=closure)
 
 model.set_bc("no penetration", "top", "bottom")
-model.set_bc("free slip", "top", "bottom")
+model.set_bc("no slip", "top", "bottom")
 model.problem.add_bc("right(b) = B0")
 model.problem.add_bc("left(b) = 0")
 
 model.build_solver()
 
-# Iniital condition: unstable buoyancy grad + random perturbations
+# Initial condition: unstable buoyancy grad + random perturbations
 noise = dedaLES.random_noise(model.domain)
 z = model.z
 pert = a * noise * z * (Lz - z)
 b0 = Bz*(z - pert)
 model.set_fields(b=b0)
 
-# Integration parameters
-model.solver.stop_sim_time = 100
-model.solver.stop_wall_time = 60 * 60.
-model.solver.stop_iteration = np.inf
+model.stop_at(sim_time=kerr_parameters[Ra]['tf'])
 
 # Analysis
-if closure is None:
-    closure_name = 'DNS'
-else:
-    closure_name = closure.__class__.__name__
-
+if closure is None: closure_name = 'DNS'
+else:               closure_name = closure.__class__.__name__
+    
 snap = model.solver.evaluator.add_file_handler(
         "snapshots_rayleigh_benard_{:s}".format(closure_name), sim_dt=0.2, max_writes=10)
+
 snap.add_task("interp(b, z=0)", scales=1, name='b midplane')
 snap.add_task("interp(u, z=0)", scales=1, name='u midplane')
 snap.add_task("interp(v, z=0)", scales=1, name='v midplane')
@@ -107,7 +113,7 @@ snap.add_task("interp(w, z=0)", scales=1, name='w midplane')
 snap.add_task("integ(b, 'z')", name='b integral x4', scales=4)
 
 # CFL
-CFL = flow_tools.CFL(model.solver, initial_dt=1e-6, cadence=5, 
+CFL = flow_tools.CFL(model.solver, initial_dt=1e-2, cadence=20, 
                      safety=1.5, max_change=1.5, min_change=0.5, max_dt=0.05)
 CFL.add_velocities(('u', 'v', 'w'))
 
