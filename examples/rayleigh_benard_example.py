@@ -1,3 +1,10 @@
+"""
+This script reproduces results from
+
+Robert M Kerr, "Rayleigh number scaling in numerical convection", 
+Journal of Fluid Mechanics (1996)
+"""
+
 import sys; sys.path.append("..")
 
 import time, logging
@@ -11,6 +18,38 @@ import dedaLES
 
 logger = logging.getLogger(__name__)
 
+resolutions = {
+    1: {nh:  64, nz: 32},
+    2: {nh:  96, nz: 48},
+    3: {nh: 128, nz: 48},
+    4: {nh: 192, nz: 64},
+    5: {nh: 288, nz: 96} 
+}
+
+experiments = {
+    5000: { **resolutions[1],
+            Ra : 5e4,
+            t0 : 24.0,
+            tf : 44.0 },
+    10000: { **resolutions[1],
+            Ra : 1e5,
+            t0 : 24.0,
+            tf : 44.0 },
+    20000: { **resolutions[1]
+            Ra : 2e5,
+            t0 : 24.0,
+            tf : 44.0 },
+    40000: { **resolutions[3],
+            Ra : 4e5,
+            t0 : 26.0,
+            tf : 34.0 },
+    50000: { **resolutions[2],
+            Ra : 4e5,
+            t0 : 27.0,
+            tf : 40.0 },
+} 
+            
+    
 # Domain parameters
 nx = 64         # Horizontal resolution
 ny = 64         # Horizontal resolution
@@ -21,16 +60,13 @@ Lz = 1.0        # Domain vertical extent
 
 # Parameters
 Pr = 1.0        # Prandtl number
+Ra = 2e4        # Rayleigh number
 f  = 0.0        # Coriolis parameter
-κ  = 1.0        # Thermal diffusivity 
-ε  = 0.8        # Perturbation above criticality
 a  = 1e-3       # Noise amplitude for initial condition
 
-# Constants
-Ra_critical = 1707.762
-Ra = Ra_critical + ε
-ν  = Pr*κ                   # Viscosity 
-Bz = -Ra*Pr                 # Unstable buoyancy gradient
+κ  = Pr         # Thermal diffusivity 
+Bz = -Ra*Pr     # Unstable buoyancy gradient
+ν  = 1/Re       # Viscosity 
 
 # Construct model
 closure = None #dedaLES.AnisotropicMinimumDissipation()
