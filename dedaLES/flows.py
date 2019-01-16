@@ -74,7 +74,7 @@ class Flow():
             except AttributeError:
                 self.log_tasks = {name: task}
 
-    def build_solver(self, timestepper='RK443'):
+    def build_solver(self, timestepper='SBDF3'):
         """Build a dedalus solver for the model with `timestepper`.
 
         Args
