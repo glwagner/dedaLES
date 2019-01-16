@@ -62,7 +62,7 @@ kerr_parameters = {
 
     
 # Rayleigh number
-Ra = 5000
+Ra = 10000
 
 # Fixed parameters
 nx = ny = kerr_parameters[Ra]['nh']
@@ -97,29 +97,26 @@ pert = a * noise * z * (Lz - z)
 b0 = Bz*(z - pert)
 model.set_fields(b=b0)
 
-model.stop_at(sim_time=kerr_parameters[Ra]['tf'])
+model.stop_at(iteration=1000) #sim_time=kerr_parameters[Ra]['tf'])
 
 # Analysis
 if closure is None: closure_name = 'DNS'
 else:               closure_name = closure.__class__.__name__
     
-snap = model.solver.evaluator.add_file_handler(
-        "snapshots_rayleigh_benard_{:s}".format(closure_name), sim_dt=0.2, max_writes=10)
+analysis = model.solver.evaluator.add_file_handler(
+    "rayleigh_benard_snapshots_{:s}".format(closure_name), iter=100, max_writes=100)
 
-snap.add_task("interp(b, z=0)", scales=1, name='b midplane')
-snap.add_task("interp(u, z=0)", scales=1, name='u midplane')
-snap.add_task("interp(v, z=0)", scales=1, name='v midplane')
-snap.add_task("interp(w, z=0)", scales=1, name='w midplane')
-snap.add_task("integ(b, 'z')", name='b integral x4', scales=4)
+analysis.add_system(model.solver.state, layout='g')
 
 # CFL
-CFL = flow_tools.CFL(model.solver, initial_dt=1e-2, cadence=20, 
-                     safety=1.5, max_change=1.5, min_change=0.5, max_dt=0.05)
+CFL = flow_tools.CFL(
+    model.solver, initial_dt=1e-4, cadence=20, safety=1.5, max_change=1.5, min_change=0.5, max_dt=0.05)
 CFL.add_velocities(('u', 'v', 'w'))
 
 # Flow properties
 flow = flow_tools.GlobalFlowProperty(model.solver, cadence=10)
 flow.add_property("sqrt(u*u + v*v + w*w) / ν", name='Re')
+flow.add_property("ux*ux + uy*uy + uz*uz + vx*vx + vy*vy + vz*vz + wx*wx + wy*wy + wz*wz", name="epsilon")
 
 # Main loop
 try:
@@ -132,6 +129,7 @@ try:
             logger.info('Iteration: %i, Time: %e, dt: %e' %(
                         model.solver.iteration, model.solver.sim_time, dt))
             logger.info('Max Re = %f' %flow.max('Re'))
+            logger.info('Average epsilon = %f' %flow.volume_average('epsilon'))
 except:
     logger.error('Exception raised, triggering end of main loop.')
     raise
