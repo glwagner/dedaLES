@@ -83,7 +83,9 @@ a  = 1e-3                   # Noise amplitude for initial condition
 κ = Pr                      # Thermal diffusivity 
 
 # Construct model
-closure = None #dedaLES.AnisotropicMinimumDissipation()
+#closure = dedaLES.AnisotropicMinimumDissipation()
+closure = dedaLES.ConstantSmagorinsky()
+#closure = None
 model = dedaLES.BoussinesqChannelFlow(Lx=Lx, Ly=Ly, Lz=Lz, nx=nx, ny=ny, nz=nz, 
                                       ν=ν, κ=κ, Δb=Δb, closure=closure, nu=ν)
 

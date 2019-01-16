@@ -189,12 +189,19 @@ class ChannelFlow(Flow):
         self.problem.add_bc("left(u) = {}".format(u))
         self.problem.add_bc("left(v) = {}".format(v))
 
-    def set_tracer_gradient_bc_bottom(self, tracers=[], gradient=0):
+    def set_tracer_value_bc_top(self, tracers=[], value=0):
         if isinstance(tracers, str):
-            self.problem.add_bc("left({}z) = {}".format(tracers, gradient))
+            self.problem.add_bc("right({}) = {}".format(tracers, gradient))
         else:
             for tracer in tracers:
-                self.problem.add_bc("left({}z) = {}".format(tracer, gradient))
+                self.problem.add_bc("right({}) = {}".format(tracer, gradient))
+
+    def set_tracer_value_bc_top(self, tracers=[], value=0):
+        if isinstance(tracers, str):
+            self.problem.add_bc("left({}) = {}".format(tracers, gradient))
+        else:
+            for tracer in tracers:
+                self.problem.add_bc("left({}) = {}".format(tracer, gradient))
 
     def set_tracer_gradient_bc_top(self, tracers=[], gradient=0):
         if isinstance(tracers, str):
@@ -202,6 +209,18 @@ class ChannelFlow(Flow):
         else:
             for tracer in tracers:
                 self.problem.add_bc("right({}z) = {}".format(tracer, gradient))
+
+    def set_tracer_gradient_bc_bottom(self, tracers=[], gradient=0):
+        if isinstance(tracers, str):
+            self.problem.add_bc("left({}z) = {}".format(tracers, gradient))
+        else:
+            for tracer in tracers:
+                self.problem.add_bc("left({}z) = {}".format(tracer, gradient))
+
+    def set_tracer_value_bc(self, tracers=[], *walls, value=0):
+        for wall in walls:
+            method = getattr(self, "set_tracer_value_bc_%s" %wall)
+            method(tracers, value=value)
 
     def set_tracer_gradient_bc(self, tracers=[], *walls, gradient=0):
         for wall in walls:
@@ -216,9 +235,11 @@ class ChannelFlow(Flow):
 
         Args
         ----
-            bctype : A string that indicates the type of boundary condition being specified.
+            bctype : (str)
+                The type of boundary condition being specified.
 
-            walls : The walls on which the boundary condition will be specified.
+            walls : (str)
+                The walls on which the boundary condition will be specified.
                     (either "top" or "bottom").
 
         Keyword args

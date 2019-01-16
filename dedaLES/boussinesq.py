@@ -96,6 +96,9 @@ class BoussinesqChannelFlow(ChannelFlow):
         # LES Closure
         add_closure_substitutions(problem, closure, tracers=['b'])
         add_closure_equations(problem, closure, tracers=['b'])
+
+        # Custom substitutions
+        problem.substitutions['ε'] = "ν*(ux*ux + uy*uy + uz*uz + vx*vx + vy*vy + vz*vz + wx*wx + wy*wy + wz*wz)"
                    
         # Equations
         problem.add_equation("dt(u) - ν*(dx(ux) + dy(uy) + dz(uz)) + dx(p) - f*v = - u*ux - v*uy - w*uz + Fx_sgs")
@@ -116,7 +119,7 @@ class BoussinesqChannelFlow(ChannelFlow):
         self.x = domain.grid(0)
         self.y = domain.grid(1)
         self.z = domain.grid(2)
-        
+
     def set_noflux_bc_top(self):
         """Set a no flux condition on buoyancy on the top wall."""
         ChannelFlow.set_tracer_noflux_bc(self, "top", tracers="b")
