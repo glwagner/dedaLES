@@ -28,38 +28,41 @@ resolutions = {
 }
 
 kerr_parameters = {
-    5000: { **resolutions[1],
+    5000: { 'nh' : 64,
+            'nz' : 32,
             't0' : 24.0,
             'tf' : 44.0 },
-   10000: { **resolutions[1],
+   10000: { 'nh' : 64,
+            'nz' : 32,
             't0' : 24.0,
             'tf' : 44.0 },
-   20000: { **resolutions[1]
+   20000: { 'nh' : 64,
+            'nz' : 32,
             't0' : 24.0,
-            'tf' : 44.0 },
-   40000: { **resolutions[3],
-            't0' : 26.0,
-            'tf' : 34.0 },
-   50000: { **resolutions[2],
-            't0' : 27.0,
-            'tf' : 40.0 },
-  100000: { **resolutions[3],
-            't0' : 26.0,
-            'tf' : 1000.0 },
-  250000: { **resolutions[3],
-            't0' : 26.0,
-            'tf' : 36.0 },
-  500000: { **resolutions[4],
-            't0' : 49.0,
-            'tf' : 64.0 },
- 1000000: { **resolutions[4],
-            't0' : 28.0,
-            'tf' : 37.0 },
- 2000000: { **resolutions[5],
-            't0' : 24.0,
-            'tf' : 140.0 }
-} 
-
+            'tf' : 44.0 }}
+#   40000: { **resolutions[3],
+#            't0' : 26.0,
+#            'tf' : 34.0 },
+#   50000: { **resolutions[2],
+#            't0' : 27.0,
+#            'tf' : 40.0 },
+#  100000: { **resolutions[3],
+#            't0' : 26.0,
+#            'tf' : 1000.0 },
+#  250000: { **resolutions[3],
+#            't0' : 26.0,
+#            'tf' : 36.0 },
+#  500000: { **resolutions[4],
+#            't0' : 49.0,
+#            'tf' : 64.0 },
+# 1000000: { **resolutions[4],
+#            't0' : 28.0,
+#            'tf' : 37.0 },
+# 2000000: { **resolutions[5],
+#            't0' : 24.0,
+#            'tf' : 140.0 }
+#} 
+#
     
 # Rayleigh number
 Ra = 10000
@@ -76,7 +79,7 @@ a  = 1e-3               # Noise amplitude for initial condition
 # Calculated parameters
 κ  = Pr                 # Thermal diffusivity 
 Bz = -Ra*Pr             # Unstable buoyancy gradient
-ν  = -Lz^4*Bz/(Ra*κ)    # Viscosity 
+ν  = -Lz**4*Bz/(Ra*κ)    # Viscosity 
 
 # Construct model
 closure = None #dedaLES.AnisotropicMinimumDissipation()
