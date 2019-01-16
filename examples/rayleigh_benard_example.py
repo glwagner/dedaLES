@@ -85,12 +85,13 @@ a  = 1e-3                   # Noise amplitude for initial condition
 # Construct model
 closure = None #dedaLES.AnisotropicMinimumDissipation()
 model = dedaLES.BoussinesqChannelFlow(Lx=Lx, Ly=Ly, Lz=Lz, nx=nx, ny=ny, nz=nz, 
-                                      ν=ν, κ=κ, Δb=Δb, closure=closure)
+                                      ν=ν, κ=κ, Δb=Δb, closure=closure, nu=ν)
 
 model.set_bc("no penetration", "top", "bottom")
 model.set_bc("no slip", "top", "bottom")
 model.problem.add_bc("right(b) = Δb")
 model.problem.add_bc("left(b) = 0")
+model.problem.substitutions['ε'] = "ν*(ux*ux + uy*uy + uz*uz + vx*vx + vy*vy + vz*vz + wx*wx + wy*wy + wz*wz)"
 
 model.build_solver()
 
@@ -119,8 +120,9 @@ CFL.add_velocities(('u', 'v', 'w'))
 
 # Flow properties
 flow = flow_tools.GlobalFlowProperty(model.solver, cadence=10)
-flow.add_property("sqrt(u*u + v*v + w*w) / ν", name='Re')
-flow.add_property("ux*ux + uy*uy + uz*uz + vx*vx + vy*vy + vz*vz + wx*wx + wy*wy + wz*wz", name="epsilon")
+flow.add_property("sqrt(u*u + v*v + w*w) / nu", name='Re_domain')
+flow.add_property("sqrt(ε) / nu", name='Re_dissipation')
+flow.add_property("ε", name="dissipation")
 
 # Main loop
 try:
@@ -132,8 +134,9 @@ try:
         if (model.solver.iteration-1) % 10 == 0:
             logger.info('Iteration: %i, Time: %e, dt: %e' %(
                         model.solver.iteration, model.solver.sim_time, dt))
-            logger.info('Max Re = %f' %flow.max('Re'))
-            logger.info('Average epsilon = %f' %flow.volume_average('epsilon'))
+            logger.info('Max domain Re = %f' %flow.max("Re_domain"))
+            logger.info('Max dissipation Re = %f' %flow.max("Re_dissipation"))
+            logger.info('Average epsilon = %f' %flow.volume_average("dissipation"))
 except:
     logger.error('Exception raised, triggering end of main loop.')
     raise
