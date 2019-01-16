@@ -66,11 +66,13 @@ kerr_parameters = {
     
 # Re = U*L/ν = 
 # Rayleigh number. Ra = Δb*L^3 / ν*κ = Δb*L^3*Pr / ν^2
-Ra = 10000
+Ra = 2000
 
 # Fixed parameters
-nx = ny = kerr_parameters[Ra]['nh']
-nz = kerr_parameters[Ra]['nz']
+#nx = ny = kerr_parameters[Ra]['nh']
+#nz = kerr_parameters[Ra]['nz']
+nx = ny = 8     #for testing
+nz = 8          #for testing
 Lx = Ly = 6.0               # Horizonal extent
 Lz = 1.0                    # Vertical extent
 Pr = 0.7                    # Prandtl number
@@ -84,15 +86,15 @@ a  = 1e-3                   # Noise amplitude for initial condition
 
 # Construct model
 #closure = dedaLES.AnisotropicMinimumDissipation()
-closure = dedaLES.ConstantSmagorinsky()
-#closure = None
+#closure = dedaLES.ConstantSmagorinsky()
+closure = None
 model = dedaLES.BoussinesqChannelFlow(Lx=Lx, Ly=Ly, Lz=Lz, nx=nx, ny=ny, nz=nz, 
-                                      ν=ν, κ=κ, Δb=Δb, closure=closure, nu=ν)
+                                      ν=ν, κ=κ, Δb=Δb, closure=closure, nu=ν,V=Lx*Ly*Lz)
 
 model.set_bc("no penetration", "top", "bottom")
 model.set_bc("no slip", "top", "bottom")
-model.problem.add_bc("right(b) = Δb")
-model.problem.add_bc("left(b) = 0")
+model.problem.add_bc("right(b) = 0")
+model.problem.add_bc("left(b) = Δb")
 model.problem.substitutions['ε'] = "ν*(ux*ux + uy*uy + uz*uz + vx*vx + vy*vy + vz*vz + wx*wx + wy*wy + wz*wz)"
 
 model.build_solver()
@@ -106,14 +108,20 @@ model.set_fields(b=b0)
 
 model.stop_at(iteration=1000) #sim_time=kerr_parameters[Ra]['tf'])
 
-# Analysis
+# Analysis: Some Timesteps
 if closure is None: closure_name = 'DNS'
 else:               closure_name = closure.__class__.__name__
-    
-analysis = model.solver.evaluator.add_file_handler(
-    "rayleigh_benard_snapshots_{:s}".format(closure_name), iter=100, max_writes=100)
 
+analysis = model.solver.evaluator.add_file_handler("rayleigh_benard_snapshots_{:s}".format(closure_name), iter=100, max_writes=100)
 analysis.add_system(model.solver.state, layout='g')
+# we should consider saving the total state only at the final timestep for memory purposes
+
+
+# Analysis: All Timesteps
+nusselt = model.solver.evaluator.add_file_handler('nusselt',iter=1)
+nusselt.add_task("integ(integ(integ(b*w, 'z'), 'x'),'z')/V", layout='g', name='Nu1')
+nusselt.add_task("integ(integ(integ(ε, 'z'), 'x'),'y')/V", layout='g', name='Nu2')
+nusselt.add_task("κ*(integ(integ(integ(bz*bz + dx(b)*dx(b) + dy(b)*dy(b), 'z'), 'x'),'y')/V-1)", layout='g', name='Nu3')
 
 # CFL
 CFL = flow_tools.CFL(
