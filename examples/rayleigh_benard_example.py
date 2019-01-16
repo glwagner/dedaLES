@@ -64,31 +64,32 @@ kerr_parameters = {
 #} 
 #
     
-# Rayleigh number
+# Re = U*L/ν = 
+# Rayleigh number. Ra = Δb*L^3 / ν*κ = Δb*L^3*Pr / ν^2
 Ra = 10000
 
 # Fixed parameters
 nx = ny = kerr_parameters[Ra]['nh']
 nz = kerr_parameters[Ra]['nz']
-Lx = Ly = 12.0          # Horizonal extent
-Lz = 2.0                # Vertical extent
-Pr = 0.7                # Prandtl number
-f  = 0.0                # Coriolis parameter
-a  = 1e-3               # Noise amplitude for initial condition
+Lx = Ly = 6.0               # Horizonal extent
+Lz = 1.0                    # Vertical extent
+Pr = 0.7                    # Prandtl number
+f  = 0.0                    # Coriolis parameter
+a  = 1e-3                   # Noise amplitude for initial condition
+Δb = 1.0                    # Buoyancy difference
 
 # Calculated parameters
-κ  = Pr                 # Thermal diffusivity 
-Bz = -Ra*Pr             # Unstable buoyancy gradient
-ν  = -Lz**4*Bz/(Ra*κ)    # Viscosity 
+ν = np.sqrt(Δb*Pr*Lz**3/Ra) # Viscosity. ν = sqrt(Pr/Ra) with Lz=Δb=1
+κ = Pr                      # Thermal diffusivity 
 
 # Construct model
 closure = None #dedaLES.AnisotropicMinimumDissipation()
-model = dedaLES.BoussinesqChannelFlow(Lx=Lx, Ly=Ly, Lz=Lz, zbottom=-Lz/2, nx=nx, ny=ny, nz=nz, 
-                                      ν=ν, κ=κ, B0=Bz*Lz, closure=closure)
+model = dedaLES.BoussinesqChannelFlow(Lx=Lx, Ly=Ly, Lz=Lz, nx=nx, ny=ny, nz=nz, 
+                                      ν=ν, κ=κ, Δb=Δb, closure=closure)
 
 model.set_bc("no penetration", "top", "bottom")
 model.set_bc("no slip", "top", "bottom")
-model.problem.add_bc("right(b) = B0")
+model.problem.add_bc("right(b) = Δb")
 model.problem.add_bc("left(b) = 0")
 
 model.build_solver()
@@ -97,7 +98,7 @@ model.build_solver()
 noise = dedaLES.random_noise(model.domain)
 z = model.z
 pert = a * noise * z * (Lz - z)
-b0 = Bz*(z - pert)
+b0 = (z - pert) / Lz
 model.set_fields(b=b0)
 
 model.stop_at(iteration=1000) #sim_time=kerr_parameters[Ra]['tf'])
