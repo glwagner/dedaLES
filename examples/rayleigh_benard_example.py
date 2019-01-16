@@ -82,7 +82,7 @@ a  = 1e-3                   # Noise amplitude for initial condition
 
 # Calculated parameters
 ν = np.sqrt(Δb*Pr*Lz**3/Ra) # Viscosity. ν = sqrt(Pr/Ra) with Lz=Δb=1
-κ = Pr                      # Thermal diffusivity 
+κ = ν/Pr                      # Thermal diffusivity 
 
 # Construct model
 #closure = dedaLES.AnisotropicMinimumDissipation()
