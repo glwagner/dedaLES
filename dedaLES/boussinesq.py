@@ -7,7 +7,10 @@ from .utils import add_parameters, bind_parameters, add_substitutions, add_first
 from .closures import add_closure_substitutions, add_closure_variables, add_closure_equations
 
 default_substitutions = {
-    'ε' : "ν*(ux*ux + uy*uy + uz*uz + vx*vx + vy*vy + vz*vz + wx*wx + wy*wy + wz*wz)"
+        'ε' : "ν*(ux*ux + uy*uy + uz*uz + vx*vx + vy*vy + vz*vz + wx*wx + wy*wy + wz*wz)",
+    'ε_sgs' : "u*Fx_sgs + v*Fy_sgs + w*Fz_sgs",
+        'χ' : "κ*(bx*bx + by*by + bz*bz)",
+    'χ_sgs' : "b*Fb_sgs"
 }
 
 class BoussinesqChannelFlow(ChannelFlow):
