@@ -3,8 +3,12 @@ import numpy as np
 from dedalus import public as de
 
 from .flows import ChannelFlow
-from .utils import add_parameters, bind_parameters, add_first_derivative_substitutions
+from .utils import add_parameters, bind_parameters, add_substitutions, add_first_derivative_substitutions
 from .closures import add_closure_substitutions, add_closure_variables, add_closure_equations
+
+default_substitutions = {
+    'ε' : "ν*(ux*ux + uy*uy + uz*uz + vx*vx + vy*vy + vz*vz + wx*wx + wy*wy + wz*wz)"
+}
 
 class BoussinesqChannelFlow(ChannelFlow):
     """
@@ -72,6 +76,7 @@ class BoussinesqChannelFlow(ChannelFlow):
         xleft = None,  
         yleft = None,  
         zbottom = None,  
+        substitutions = default_substitutions,
         **params         
         ):
 
@@ -98,7 +103,7 @@ class BoussinesqChannelFlow(ChannelFlow):
         add_closure_equations(problem, closure, tracers=['b'])
 
         # Custom substitutions
-        problem.substitutions['ε'] = "ν*(ux*ux + uy*uy + uz*uz + vx*vx + vy*vy + vz*vz + wx*wx + wy*wy + wz*wz)"
+        add_substitutions(problem, **substitutions)
                    
         # Equations
         problem.add_equation("dt(u) - ν*(dx(ux) + dy(uy) + dz(uz)) + dx(p) - f*v = - u*ux - v*uy - w*uz + Fx_sgs")

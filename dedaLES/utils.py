@@ -18,6 +18,13 @@ def add_parameters(problem, **params):
     for name, value in params.items():
         problem.parameters[name] = value
 
+def add_substitutions(problem, **substitutions):
+    """
+    Add substitutions to a dedalus problem programmatically.
+    """
+    for name, value in substitutions.items():
+        problem.substitutions[name] = value
+
 def add_first_derivative_substitutions(problem, variables, dims):
     """
     Add first-derivative substitutions for `variables` to `problem`.
