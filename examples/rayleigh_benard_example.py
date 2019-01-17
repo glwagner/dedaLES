@@ -66,13 +66,13 @@ kerr_parameters = {
     
 # Re = U*L/ν = 
 # Rayleigh number. Ra = Δb*L^3 / ν*κ = Δb*L^3*Pr / ν^2
-Ra = 2000
+Ra = 2000 #for testing
 
 # Fixed parameters
 #nx = ny = kerr_parameters[Ra]['nh']
 #nz = kerr_parameters[Ra]['nz']
-nx = ny = 8     #for testing
-nz = 8          #for testing
+nx = ny = 8     # for testing
+nz = 8          # for testing
 Lx = Ly = 6.0               # Horizonal extent
 Lz = 1.0                    # Vertical extent
 Pr = 0.7                    # Prandtl number
@@ -85,9 +85,9 @@ a  = 1e-3                   # Noise amplitude for initial condition
 κ = ν/Pr                      # Thermal diffusivity 
 
 # Construct model
-#closure = dedaLES.AnisotropicMinimumDissipation()
+closure = dedaLES.AnisotropicMinimumDissipation()
 #closure = dedaLES.ConstantSmagorinsky()
-closure = None
+#closure = None
 model = dedaLES.BoussinesqChannelFlow(Lx=Lx, Ly=Ly, Lz=Lz, nx=nx, ny=ny, nz=nz, 
                                       ν=ν, κ=κ, Δb=Δb, closure=closure, nu=ν,V=Lx*Ly*Lz)
 
@@ -95,7 +95,7 @@ model.set_bc("no penetration", "top", "bottom")
 model.set_bc("no slip", "top", "bottom")
 model.problem.add_bc("right(b) = 0")
 model.problem.add_bc("left(b) = Δb")
-model.problem.substitutions['ε'] = "ν*(ux*ux + uy*uy + uz*uz + vx*vx + vy*vy + vz*vz + wx*wx + wy*wy + wz*wz)"
+
 
 model.build_solver()
 
@@ -106,7 +106,11 @@ pert = a * noise * z * (Lz - z)
 b0 = (z - pert) / Lz
 model.set_fields(b=b0)
 
-model.stop_at(iteration=1000) #sim_time=kerr_parameters[Ra]['tf'])
+model.stop_at(iteration=24000) #sim_time=kerr_parameters[Ra]['tf'])
+
+#Load previous timestepping
+#model.solver.load_state('rayleigh_benard_snapshots_DNS/rayleigh_benard_snapshots_DNS_s1/rayleigh_benard_snapshots_DNS_s1_p0.h5', -1)
+model.solver.load_state('rayleigh_benard_snapshots_AnisotropicMinimumDissipation/rayleigh_benard_snapshots_AnisotropicMinimumDissipation_s1/rayleigh_benard_snapshots_AnisotropicMinimumDissipation_s1_p0.h5')
 
 # Analysis: Some Timesteps
 if closure is None: closure_name = 'DNS'
@@ -118,10 +122,11 @@ analysis.add_system(model.solver.state, layout='g')
 
 
 # Analysis: All Timesteps
-nusselt = model.solver.evaluator.add_file_handler('nusselt',iter=1)
-nusselt.add_task("integ(integ(integ(b*w, 'z'), 'x'),'z')/V", layout='g', name='Nu1')
-nusselt.add_task("integ(integ(integ(ε, 'z'), 'x'),'y')/V", layout='g', name='Nu2')
-nusselt.add_task("κ*(integ(integ(integ(bz*bz + dx(b)*dx(b) + dy(b)*dy(b), 'z'), 'x'),'y')/V-1)", layout='g', name='Nu3')
+# because Δb = 1, Lz = 1, to obtain the non-dimensional Nusselt number all we must do is divide the vertical heat flux by kappa
+nusselt = model.solver.evaluator.add_file_handler('nusselt_AMD', iter=1)
+nusselt.add_task("integ(integ(integ(b*w, 'z'), 'x'), 'y') / V / κ", layout='g', name='Nu1')
+nusselt.add_task("integ(integ(integ(ε, 'z'), 'x'), 'y')/V / κ", layout='g', name='Nu2')
+nusselt.add_task("(integ(integ(integ(bz*bz + dx(b)*dx(b) + dy(b)*dy(b), 'z'), 'x'), 'y')/V-1)", layout='g', name='Nu3')
 
 # CFL
 CFL = flow_tools.CFL(
