@@ -68,7 +68,8 @@ class EddyViscosityClosure():
 
     def substitute_zero_constant_diffusivity(self, problem, tracers=[]):
         for c in tracers:
-            problem.substitutions[f'κ{c}_sgs_const'] = "0"
+            for ij in tensor_components_3d:
+                problem.substitutions[f'κ{ij}_{c}_sgs_const'] = "0"
 
     def add_substitutions_strain_rate_tensor(self, problem, u='u', v='v', w='w'):
         """
@@ -136,25 +137,26 @@ class EddyViscosityClosure():
 
         # Diffusivity for c
         κ_sgs = f"κ{c}_sgs"
-        Nc_sgs = f"N{c}_sgs"
 
         problem.substitutions[qx] = f"- {κ_sgs} * dx({c})" 
         problem.substitutions[qy] = f"- {κ_sgs} * dy({c})"
         problem.substitutions[qz] = f"- {κ_sgs} * dz({c})"
+
+        Nc_sgs = f"N{c}_sgs"
         problem.substitutions[Nc_sgs] = f"- dx({qx}) - dy({qy}) - dz({qz})"
 
         # Linear subgrid buoyancy fluxes
-        qx_linear = f"q{c}x_linear"
-        qy_linear = f"q{c}y_linear"
-        qz_linear = f"q{c}z_linear"
+        for i in ['x', 'y', 'z']:
+            qi_linear = f"q{i}_{c}_linear"
+            κix_sgs_const = f"κ{i}x_{c}_sgs_const"
+            κiy_sgs_const = f"κ{i}y_{c}_sgs_const"
+            κiz_sgs_const = f"κ{i}z_{c}_sgs_const"
+            problem.substitutions[qi_linear] = f"- {κix_sgs_const} * dx({c}) - {κiy_sgs_const} * dy({c}) - {κiz_sgs_const} * dz({c})" 
 
-        # Diffusivity for c
-        κ_sgs_const = f"κ{c}_sgs_const"
+        qx_linear = f"qx_{c}_linear"
+        qy_linear = f"qy_{c}_linear"
+        qz_linear = f"qz_{c}_linear"
         Lc_sgs = f"L{c}_sgs"
-
-        problem.substitutions[qx_linear] = f"- {κ_sgs_const} * dx({c})" 
-        problem.substitutions[qy_linear] = f"- {κ_sgs_const} * dy({c})"
-        problem.substitutions[qz_linear] = f"- {κ_sgs_const} * dz({c})"
         problem.substitutions[Lc_sgs] = f"- dx({qx_linear}) - dy({qy_linear}) - dz({qz_linear})"
 
     def add_closure_substitutions(self):
