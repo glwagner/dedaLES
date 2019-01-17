@@ -1,4 +1,20 @@
+"""
+closures.py
+
+Classes and functions for implementing turbulence closures
+in dedaLES.
+
+Turbulence closures are generalized to consist of 'nonlinear' and
+'linear' momentum stress and tracer flux divergences. 
+For u-momentum, for example, the nonlinear stress divergence is 
+denoted Nu_sgs, while the linear stress divergence is denoted Lu_sgs.
+For a tracer c, the nonlinear flux divergence is Nc_sgs, and the linear
+flux divergence is Lc_sgs.
+"""
+
 import numpy as np
+
+tensor_components_3d = ['xx', 'yy', 'zz', 'xy', 'yz', 'zx', 'yx', 'zy', 'xz']
 
 def add_closure_variables(variables, closure):
     # variables = variables + closure.variables
@@ -10,29 +26,50 @@ def add_closure_substitutions(problem, closure, tracers=[], **kwargs):
     """
     if closure is None:
         # No parameterized subgrid fluxes
-        problem.substitutions['Fx_sgs'] = "0"
-        problem.substitutions['Fy_sgs'] = "0"
-        problem.substitutions['Fz_sgs'] = "0"
+        problem.substitutions['Nu_sgs'] = "0"
+        problem.substitutions['Nv_sgs'] = "0"
+        problem.substitutions['Nw_sgs'] = "0"
+        problem.substitutions['Lu_sgs'] = "0"
+        problem.substitutions['Lv_sgs'] = "0"
+        problem.substitutions['Lw_sgs'] = "0"
+        # For convenience:
+        problem.substitutions['ν_sgs'] = "0"
+        problem.substitutions['ν_sgs'] = "0"
+        problem.substitutions['ν_sgs'] = "0"
         for c in tracers:
-            problem.substitutions[f'F{c}_sgs'] = "0"
+            problem.substitutions[f'N{c}_sgs'] = "0"
+            problem.substitutions[f'L{c}_sgs'] = "0"
+            # For convenience:
+            problem.substitutions[f'κ{c}_sgs'] = "0"
     else:
         # closure.equations(problem, tracers=tracers)
         closure.add_substitutions(problem, tracers=tracers, **kwargs)
-
 
 def add_closure_equations(problem, closure, **kwargs):
     """
     Add closure equations to the problem.
     """
     pass
- 
+
 
 class EddyViscosityClosure():
     """
     Generic LES closure based on an eddy viscosity and diffusivity.
+
+    The nonlinear, isotropic eddy viscosity is denoted ν_sgs. The constant eddy 
+    viscosity tensor is denoted νij_sgs_const.
     """
     def __init__(self):
         pass
+
+    def substitute_zero_constant_viscosity(self, problem):
+        for ij in tensor_components_3d:
+            problem.substitutions[f'ν{ij}_sgs_const'] = "0"
+
+    def substitute_zero_constant_diffusivity(self, problem, tracers=[]):
+        for c in tracers:
+            for ij in tensor_components_3d:
+                problem.substitutions[f'κ{ij}_{c}_sgs_const'] = "0"
 
     def add_substitutions_strain_rate_tensor(self, problem, u='u', v='v', w='w'):
         """
@@ -69,27 +106,29 @@ class EddyViscosityClosure():
 
     def add_substitutions_subgrid_stress(self, problem):
         """Defines the subgrid stress tensor `τij` and subgrid stress
-        divergence `(Fx_sgs, Fy_sgs, Fz_sgs)` in `problem`.
+        divergence `(Nu_sgs, Nv_sgs, Nw_sgs)` in `problem`.
         """
         # Subgrid stress proportional to eddy viscosity
-        problem.substitutions['τxx'] = "2 * ν_sgs * Sxx"
-        problem.substitutions['τxy'] = "2 * ν_sgs * Sxy"
-        problem.substitutions['τxz'] = "2 * ν_sgs * Sxz"
-        problem.substitutions['τyx'] = "2 * ν_sgs * Syx"
-        problem.substitutions['τyy'] = "2 * ν_sgs * Syy"
-        problem.substitutions['τyz'] = "2 * ν_sgs * Syz"
-        problem.substitutions['τzx'] = "2 * ν_sgs * Szx"
-        problem.substitutions['τzy'] = "2 * ν_sgs * Szy"
-        problem.substitutions['τzz'] = "2 * ν_sgs * Szz"
+        for ij in tensor_components_3d:
+            problem.substitutions[f'τ{ij}'] = f"2 * ν_sgs * S{ij}"
 
-        # Subgrid momentum fluxes
-        problem.substitutions['Fx_sgs'] = "dx(τxx) + dy(τyx) + dz(τzx)"
-        problem.substitutions['Fy_sgs'] = "dx(τxy) + dy(τyy) + dz(τzy)"
-        problem.substitutions['Fz_sgs'] = "dx(τxz) + dy(τyz) + dz(τzz)"
+        # Nonlinear subgrid momentum fluxes
+        problem.substitutions['Nu_sgs'] = "dx(τxx) + dy(τyx) + dz(τzx)"
+        problem.substitutions['Nv_sgs'] = "dx(τxy) + dy(τyy) + dz(τzy)"
+        problem.substitutions['Nw_sgs'] = "dx(τxz) + dy(τyz) + dz(τzz)"
 
+        # Linear terms
+        for ij in tensor_components_3d:
+            problem.substitutions[f'τ{ij}_linear'] = f"2 * ν{ij}_sgs_const * S{ij}"
+
+        # Linear subgrid momentum fluxes
+        problem.substitutions['Lu_sgs'] = "dx(τxx_linear) + dy(τyx_linear) + dz(τzx_linear)"
+        problem.substitutions['Lv_sgs'] = "dx(τxy_linear) + dy(τyy_linear) + dz(τzy_linear)"
+        problem.substitutions['Lw_sgs'] = "dx(τxz_linear) + dy(τyz_linear) + dz(τzz_linear)"
+        
     def add_substitutions_subgrid_flux(self, problem, c):
         """Defines the subgrid tracer flux for `qcx` for the tracer `c` and
-        the subgrid flux divergence `Fc_sgs` in `problem`.
+        the subgrid flux divergence `Nc_sgs` in `problem`.
         """
         # Subgrid buoyancy fluxes
         qx = f"q{c}x"
@@ -98,12 +137,27 @@ class EddyViscosityClosure():
 
         # Diffusivity for c
         κ_sgs = f"κ{c}_sgs"
-        Fc_sgs = f"F{c}_sgs"
 
         problem.substitutions[qx] = f"- {κ_sgs} * dx({c})" 
         problem.substitutions[qy] = f"- {κ_sgs} * dy({c})"
         problem.substitutions[qz] = f"- {κ_sgs} * dz({c})"
-        problem.substitutions[Fc_sgs] = f"- dx({qx}) - dy({qy}) - dz({qz})"
+
+        Nc_sgs = f"N{c}_sgs"
+        problem.substitutions[Nc_sgs] = f"- dx({qx}) - dy({qy}) - dz({qz})"
+
+        # Linear subgrid buoyancy fluxes
+        for i in ['x', 'y', 'z']:
+            qi_linear = f"q{i}_{c}_linear"
+            κix_sgs_const = f"κ{i}x_{c}_sgs_const"
+            κiy_sgs_const = f"κ{i}y_{c}_sgs_const"
+            κiz_sgs_const = f"κ{i}z_{c}_sgs_const"
+            problem.substitutions[qi_linear] = f"- {κix_sgs_const} * dx({c}) - {κiy_sgs_const} * dy({c}) - {κiz_sgs_const} * dz({c})" 
+
+        qx_linear = f"qx_{c}_linear"
+        qy_linear = f"qy_{c}_linear"
+        qz_linear = f"qz_{c}_linear"
+        Lc_sgs = f"L{c}_sgs"
+        problem.substitutions[Lc_sgs] = f"- dx({qx_linear}) - dy({qy_linear}) - dz({qz_linear})"
 
     def add_closure_substitutions(self):
         pass
@@ -142,6 +196,9 @@ class ConstantSmagorinsky(EddyViscosityClosure):
         self.Sc = Sc
 
     def add_substitutions(self, problem, tracers=[], u='u', v='v', w='w', **kwargs):
+        self.substitute_zero_constant_viscosity(problem)
+        self.substitute_zero_constant_diffusivity(problem, tracers=tracers)
+
         # Construct grid-based filter field
         Δx = problem.domain.bases[0].dealias * 2 * problem.domain.grid_spacing(0)
         Δy = problem.domain.bases[1].dealias * 2 * problem.domain.grid_spacing(1)
@@ -209,6 +266,9 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
             tracers : list
                 A list of the names of tracers in `problem`.
         """
+        self.substitute_zero_constant_viscosity(problem)
+        self.substitute_zero_constant_diffusivity(problem, tracers=tracers)
+
         # Construct grid-based filter field
         Δx = problem.domain.bases[0].dealias * 2 * problem.domain.grid_spacing(0)
         Δy = problem.domain.bases[1].dealias * 2 * problem.domain.grid_spacing(1)

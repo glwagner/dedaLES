@@ -3,8 +3,15 @@ import numpy as np
 from dedalus import public as de
 
 from .flows import ChannelFlow
-from .utils import add_parameters, bind_parameters, add_first_derivative_substitutions
+from .utils import add_parameters, bind_parameters, add_substitutions, add_first_derivative_substitutions
 from .closures import add_closure_substitutions, add_closure_variables, add_closure_equations
+
+default_substitutions = {
+        'ε' : "ν*(ux*ux + uy*uy + uz*uz + vx*vx + vy*vy + vz*vz + wx*wx + wy*wy + wz*wz)",
+    'ε_sgs' : "-u*(Nu_sgs+Lu_sgs) - v*(Nv_sgs+Lv_sgs) - w*(Nw_sgs+Lw_sgs)",
+        'χ' : "κ*(bx*bx + by*by + bz*bz)",
+    'χ_sgs' : "-b*(Nb_sgs+Lb_sgs)"
+}
 
 class BoussinesqChannelFlow(ChannelFlow):
     """
@@ -72,6 +79,7 @@ class BoussinesqChannelFlow(ChannelFlow):
         xleft = None,  
         yleft = None,  
         zbottom = None,  
+        substitutions = default_substitutions,
         **params         
         ):
 
@@ -96,12 +104,15 @@ class BoussinesqChannelFlow(ChannelFlow):
         # LES Closure
         add_closure_substitutions(problem, closure, tracers=['b'])
         add_closure_equations(problem, closure, tracers=['b'])
-                   
+
+        # Custom substitutions
+        add_substitutions(problem, **substitutions)
+
         # Equations
-        problem.add_equation("dt(u) - ν*(dx(ux) + dy(uy) + dz(uz)) + dx(p) - f*v = - u*ux - v*uy - w*uz + Fx_sgs")
-        problem.add_equation("dt(v) - ν*(dx(vx) + dy(vy) + dz(vz)) + dy(p) + f*u = - u*vx - v*vy - w*vz + Fy_sgs")
-        problem.add_equation("dt(w) - ν*(dx(wx) + dy(wy) + dz(wz)) + dz(p) - b   = - u*wx - v*wy - w*wz + Fz_sgs")
-        problem.add_equation("dt(b) - κ*(dx(bx) + dy(by) + dz(bz)) + Nsq*w = - u*bx - v*by - w*bz + Fb_sgs")
+        problem.add_equation(f"dt(u) - ν*(dx(ux) + dy(uy) + dz(uz)) + dx(p) - f*v - Lu_sgs = - u*ux - v*uy - w*uz + Nu_sgs")
+        problem.add_equation(f"dt(v) - ν*(dx(vx) + dy(vy) + dz(vz)) + dy(p) + f*u - Lv_sgs = - u*vx - v*vy - w*vz + Nv_sgs")
+        problem.add_equation(f"dt(w) - ν*(dx(wx) + dy(wy) + dz(wz)) + dz(p) - b   - Lw_sgs = - u*wx - v*wy - w*wz + Nw_sgs")
+        problem.add_equation(f"dt(b) - κ*(dx(bx) + dy(by) + dz(bz)) + Nsq*w       - Lb_sgs = - u*bx - v*by - w*bz + Nb_sgs")
         problem.add_equation("ux + vy + wz = 0")
 
         # First-order equivalencies
@@ -116,7 +127,7 @@ class BoussinesqChannelFlow(ChannelFlow):
         self.x = domain.grid(0)
         self.y = domain.grid(1)
         self.z = domain.grid(2)
-        
+
     def set_noflux_bc_top(self):
         """Set a no flux condition on buoyancy on the top wall."""
         ChannelFlow.set_tracer_noflux_bc(self, "top", tracers="b")

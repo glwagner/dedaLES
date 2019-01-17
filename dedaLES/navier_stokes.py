@@ -127,9 +127,9 @@ class NavierStokesTriplyPeriodicFlow(Flow):
             linear_bg_y = "0"
             linear_bg_z = "0"
 
-        xmom = f"dt(u) + {linear_x} = - {linear_bg_x} - U*Ux - V*Uy - W*Uz + Fx_sgs"
-        ymom = f"dt(v) + {linear_y} = - {linear_bg_y} - U*Vx - V*Vy - W*Vz + Fy_sgs"
-        zmom = f"dt(w) + {linear_z} = - {linear_bg_z} - U*Wx - V*Wy - W*Wz + Fz_sgs"
+        xmom = f"dt(u) + {linear_x} + Lu_sgs = - {linear_bg_x} - U*Ux - V*Uy - W*Uz + Nu_sgs"
+        ymom = f"dt(v) + {linear_y} + Lv_sgs = - {linear_bg_y} - U*Vx - V*Vy - W*Vz + Nv_sgs"
+        zmom = f"dt(w) + {linear_z} + Lw_sgs = - {linear_bg_z} - U*Wx - V*Wy - W*Wz + Nw_sgs"
                    
         problem.add_equation(xmom)
         problem.add_equation(ymom)

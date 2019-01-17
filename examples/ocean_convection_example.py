@@ -14,66 +14,69 @@ second = 1.0
 minute = 60*second
 hour   = 60*minute
 day    = 24*hour
-
-# Domain parameters
-nx = 128        # Horizontal resolution
-ny = 16         # Horizontal resolution
-nz = 64         # Vertical resolution
-Lx = 200        # Domain horizontal extent [m]
-Ly = 20         # Domain horizontal extent [m]
-Lz = 100        # Domain vertical extent [m]
-
-# Physical parameters
-Q     = -100.0  # Cooling rate [W m⁻²]
-N2inf = 9.5e-3  # Deep buoyancy gradient [s⁻²]
-h0    = 50      # Initial mixed layer depth [m]
-d     = 10      # Mixed layer - interior transition scale [m]
+siderealyear = 365*day + 6*hour + 9*min + 9.76*second
+omega = 2*pi / sideralyear
 
 # Physical constants
-α  = 2.5e-4     # Thermal expansion coefficient [K⁻¹]
-g  = 9.81       # Graviational acceleration [m s⁻²]
-ρ0 = 1028.1     # Reference density [kg m⁻³]
-cP = 3993.0     # Specific heat of oceanic water [J kg⁻¹ K⁻¹]
-κ  = 1.43e-7    # Thermal diffusivity [m² s⁻¹]
-ν  = 1.05e-6    # Viscosity [m² s⁻¹]
+α  = 1.19e-4                # Thermal expansion coefficient for water at 10ᵒC [K⁻¹]
+g  = 9.81                   # Graviational acceleration [m s⁻²]
+ρ0 = 1027.62                # Reference density [kg m⁻³]
+cP = 4003.0                 # Specific heat of seawater at 10ᵒC [J kg⁻¹ K⁻¹]
+κ  = 1.43e-7                # Thermal diffusivity of seawater [m² s⁻¹]
+ν  = 1.05e-6                # Viscosity of seawater [m² s⁻¹]
+
+# Denbo and Skyllinstad (1995) experiment parameters
+Q = -300.0                  # Surface cooling rate [W m⁻²]
+Tz_deep = 3.2e-4            # Deep temperature gradient [ᵒC/m]
+bz_deep = g*α/ρ0*Tz_deep    # Deep buoyancy gradient
+h0 = 450.0                  # Initial mixed layer depth
+d = h0/10                   # Transition thickness from deep stratified to mixed layers
+f = 1.4e-4                  # Coriolis parameters [s⁻¹]
+
+nx = ny = 128               # Horizontal resolution
+nz = 34                     # Vertical resolution
+Lx = Ly = 3840.0            # Domain horizontal extent [m]
+Lz = 1020                   # Domain vertical extent [m]
+a = 1e-2                    # Non-dimensional initial noise amplitude
+dt = 90.0                   # Timestep
 
 # Calculated parameters
-bz0 = Q*α*g / (cP*ρ0*κ) # [s⁻²]
+bz_surf = Q*α*g / (cP*ρ0*κ) # Unstable surface buoyancy gradient [s⁻²]
+b_init = (Lz-h0)*bz_deep    # Initial buoyancy at bottom of domain
+b_noise = a*b_init          # Noise amplitude for initial buoyancy condition
 
 # Construct model
-model = dedaLES.BoussinesqChannelFlow(Lx=Lx, Ly=Ly, Lz=Lz, nx=nx, ny=ny, nz=nz, ν=ν, κ=κ, 
-                                      N2inf=N2inf, bz0=bz0, tb=day/2, closure=None)
-
-def smoothstep(z, d): 
-    return 0.5*(1 + np.tanh(z/d))
-
+closure = dedaLES.ConstantSmagorinsky()
+model = dedaLES.BoussinesqChannelFlow(Lx=Lx, Ly=Ly, Lz=Lz, nx=nx, ny=ny, nz=nz, ν=ν, κ=κ, zbottom=-Lz
+                                      bz_deep=bz_deep, bz_surf=bz_surf, tb=day/2, closure=closure, H=Lz)
+    
 # Boundary conditions
-model.set_bc("nopenetration", "top", "bottom")
-model.set_bc("freeslip", "top", "bottom")
-model.set_tracer_gradient_bc("b", "top", gradient="bz0") #*tanh(t/tb)")
-model.set_tracer_gradient_bc("b", "bottom", gradient="N2inf")
+model.set_bc("no penetration", "top", "bottom")
+model.set_bc("free slip", "top", "bottom")
+model.set_tracer_gradient_bc("b", "top", gradient="bz_surf") #*tanh(t/tb)")
+model.set_tracer_gradient_bc("b", "bottom", gradient="bz_deep")
 
 model.build_solver()
 
 # Initial condition
-b0 = N2inf * (model.z + h0) * smoothstep(-model.z-h0, d)
-model.set_b(b0)
+def smoothstep(z, d): 
+    return 0.5*(1 + np.tanh(z/d))
 
-def get_KE(model): return model.flow.volume_average('KE')
-def get_variance(model): return model.flow.volume_average('variance')
+b0 = bz_deep * (model.z + h0) * smoothstep(-model.z-h0, d)
 
-#model.add_log_task("Average KE", get_KE)
-#model.add_log_task("Buoyancy variance", get_variance)
-#model.run(dt=0.1*cooling_scale, sim_time=4*day, log_cadence=10)
+# Add noise ... ?
+noise = dedaLES.random_noise(model.domain)
+b0 += b_noise * noise * model.z * (model.z + Lz) / Lz**2 # max std dev b_noise/4
+model.set_fields(b=b0)
 
-cooling_scale = 1/np.sqrt(-bz0)
-print("Cooling time scale: {} s".format(cooling_scale))
+# Flow properties
+flow = flow_tools.GlobalFlowProperty(model.solver, cadence=100)
+flow.add_property("sqrt(u*u + v*v + w*w)*H / nu", name='Re_domain')
+flow.add_property("sqrt(ε) / nu", name='Re_dissipation')
+flow.add_property("ε", name="dissipation")
+flow.add_property("w*w", name="w_square")
 
-dt = 10*cooling_scale
-log_cadence = 100
-model.solver.stop_wall_time = np.inf
-model.solver.stop_iteration = np.inf
-model.solver.stop_sim_time = 4*day
+model.stop_at(iteration=4800)
 
 # Main loop
 try:
@@ -83,13 +86,13 @@ try:
     while model.solver.ok:
         model.solver.step(dt)
 
-        if model.time_to_log(log_cadence): 
-
+        if model.time_to_log(100): 
             logger.info('Iter: {}, Time: {:.2f}, dt: {:.1f}'.format(
                         model.solver.iteration, model.solver.sim_time/hour, dt))
-
-            logger.info("Average KE = {}".format(get_KE(model)))
-            logger.info("Average buoyancy variance = {}".format(get_variance(model)))
+            logger.info("     Max domain Re = {:.6f}".format(flow.max("Re_domain")))
+            logger.info("Max dissipation Re = {:.6f}".format(flow.max("Re_dissipation")))
+            logger.info("   Average epsilon = {:.6f}".format(flow.volume_average("dissipation")))
+            logger.info("     Average rms w = {:.6f}".format(np.sqrt(flow.volume_average("w_square"))))
 
 except:
     logger.error('Exception raised, triggering end of main loop.')
