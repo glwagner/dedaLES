@@ -181,8 +181,9 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
     stratified : bool
         Set to 'True' to use the stratified version of AMD
     """
-    def __init__(self, C=1/12, stratified=False):
+    def __init__(self, C=1/12, stratified=False, reg=0):
         self.C = C
+        self.reg = reg #regularization parameter
         self.stratified = stratified
 
     def add_substitutions(self, problem, u='u', v='v', w='w', b='b', tracers=[], **kwargs):
@@ -226,6 +227,7 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
         problem.parameters['Δy'] = self.Δy
         problem.parameters['Δz'] = self.Δz
         problem.parameters['C_poin'] = self.C
+        problem.parameters['reg'] = self.reg
 
         # Add subgrid substitutions to problem
         self.add_substitutions_strain_rate_tensor(problem, u=u, v=v, w=w)
@@ -252,7 +254,7 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
         else:
             problem.substitutions['wk_bk'] = "0"
 
-        problem.substitutions['ν_sgs'] = "zero_max(C_poin * (wk_bk - uik_ujk_Sij) / tr_uij)"
+        problem.substitutions['ν_sgs'] = "zero_max(C_poin * (wk_bk - uik_ujk_Sij) / (tr_uij + reg))"
 
         self.add_substitutions_subgrid_stress(problem)
 
@@ -279,5 +281,5 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
 
             # κ_sgs = -C^2 Δₖ² ∂ₖuᵢ ∂ₖc ∂ᵢc / |∇c|²
             κ_sgs = f"κ{c}_sgs"
-            problem.substitutions[κ_sgs] = f"zero_max(-C_poin * {uik_ck_ci} / {mod_Dc})"
+            problem.substitutions[κ_sgs] = f"zero_max(-C_poin * {uik_ck_ci} / ({mod_Dc}+reg))"
             self.add_substitutions_subgrid_flux(problem, c)
