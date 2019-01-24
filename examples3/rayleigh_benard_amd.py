@@ -85,7 +85,7 @@ Ra = ralist[ri]
 nx = ny = 96
 nz = 48
 dt = 0.0025
-pt = False   #load previous state
+pt = True   #load previous state
 ker_ind = 'nx'+str(nx)+'_ny'+str(ny)+'_nz'+str(nz)+'_dt'+str(dt)+'_ri'+str(ri)     #label index
 ker_ind = 'nx'+str(nx)+'_ny'+str(ny)+'_nz'+str(nz)+'_ri'+str(ri)
 print('outputting to '+ker_ind)
@@ -122,8 +122,14 @@ pert = a * noise * z * (Lz - z)
 b0 = (z - pert) / Lz
 model.set_fields(b=b0)
 
-model.stop_at(iteration=100) #sim_time=kerr_parameters[Ra]['tf'])
+model.stop_at(iteration=40000) #sim_time=kerr_parameters[Ra]['tf'])
 
+
+# Analysis: Some Timesteps
+if closure is None: closure_name = 'DNS'
+else:               closure_name = closure.__class__.__name__
+
+    
 #Load previous timestepping
 if pt==True:
     ff = ker_ind+'_rayleigh_benard_snapshots_{:s}'.format(closure_name)
@@ -131,9 +137,6 @@ if pt==True:
     model.solver.load_state(absdirec+'/'+ff+'/'+ff+'_s1.h5')
     #note that we need to move the h5 file if we want to load from a previous state
 
-# Analysis: Some Timesteps
-if closure is None: closure_name = 'DNS'
-else:               closure_name = closure.__class__.__name__
 
 analysis = model.solver.evaluator.add_file_handler(ker_ind+'_rayleigh_benard_snapshots_{:s}'.format(closure_name), iter=5000, max_writes=30)
 analysis.add_system(model.solver.state, layout='g')
