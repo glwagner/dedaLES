@@ -74,8 +74,8 @@ kerr_parameters = {
 # Rayleigh number. Ra = Δb*L^3 / ν*κ = Δb*L^3*Pr / ν^2
 ri = 4                #rayleigh index
 
-ralist = [50000,100000,200000,400000,500000,1000000,2500000,5000000,10000000,20000000]
-dtlist = [0.025,0.025,0.025,0.025,0.0025,0.0025,0.0025,0.0025,0.0025,0.0025]
+ralist = [50000, 100000, 200000, 400000, 500000, 1000000, 2500000, 5000000, 10000000, 20000000]
+dtlist = [0.025, 0.025, 0.025, 0.025, 0.0025, 0.0025, 0.0025, 0.0025, 0.0025, 0.0025]
 Ra = ralist[ri]
 
 
@@ -85,7 +85,7 @@ Ra = ralist[ri]
 nx = ny = 96
 nz = 48
 dt = 0.0025
-pt = False
+pt = False   #load previous state
 ker_ind = 'nx'+str(nx)+'_ny'+str(ny)+'_nz'+str(nz)+'_dt'+str(dt)+'_ri'+str(ri)     #label index
 ker_ind = 'nx'+str(nx)+'_ny'+str(ny)+'_nz'+str(nz)+'_ri'+str(ri)
 print('outputting to '+ker_ind)
