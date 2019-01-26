@@ -5,7 +5,7 @@ Robert M Kerr, "Rayleigh number scaling in numerical convection",
 Journal of Fluid Mechanics (1996)
 """
 
-import os, sys; sys.path.append(os.path.join("..", "..", ".."))
+import os, sys; sys.path.append(os.path.join("..", "..",))
 import time, logging
 import numpy as np
 import matplotlib.pyplot as plt
@@ -15,6 +15,7 @@ from dedalus.extras import flow_tools
 
 import dedaLES
 
+debug = False
 logger = logging.getLogger(__name__)
 
 # From Table 2 in Kerr (1996):
@@ -78,17 +79,21 @@ kerr_parameters = {
 }
 
 def identifier(model):
-    return "nh{:d}_nz{:d}_dt{:.0f}_Ra{:d}".format(model.nx, model.nz, 10000*model.dt, model.Ra)
+    return "nh{:d}_nz{:d}_dt{:.0f}_Ra{:d}".format(model.nx, model.nz, 
+        10000*kerr_parameters[model.Ra]['dt'], model.Ra)
         
 # Rayleigh number. Ra = Δb*L^3 / ν*κ = Δb*L^3*Pr / ν^2
 Ra = 500000
 load_previous = False # load from previous simulation
 
 # Parameters
-nx = ny = kerr_parameters[Ra]['nh']
-nz = kerr_parameters[Ra]['nz']
+if debug:
+    nx = ny = nz = 8
+else:
+    nx = ny = kerr_parameters[Ra]['nh']
+    nz = kerr_parameters[Ra]['nz']
+
 dt = kerr_parameters[Ra]['dt']
-#nx = ny = nz = 8
 Lx = Ly = 6.0                 # Horizonal extent
 Lz = 1.0                      # Vertical extent
 Pr = 0.7                      # Prandtl number
@@ -101,7 +106,7 @@ a  = 1e-3                     # Noise amplitude for initial condition
 # Construct model
 closure = None
 model = dedaLES.BoussinesqChannelFlow(Lx=Lx, Ly=Ly, Lz=Lz, nx=nx, ny=ny, nz=nz, ν=ν, κ=κ, Δb=Δb, 
-                                      closure=closure, nu=ν, V=Lx*Ly*Lz, H=Lz, Ra=Ra, dt=dt)
+                                      closure=closure, nu=ν, V=Lx*Ly*Lz, H=Lz, Ra=Ra)
 model.set_bc("no penetration", "top", "bottom")
 model.set_bc("no slip", "top", "bottom")
 model.problem.add_bc("right(b) = 0")
@@ -157,13 +162,12 @@ flow.add_property("w*b/(κ*V)", name="Nu1")
 flow.add_property("ε/(κ*V)", name="Nu2")
 flow.add_property("χ/V - 1", name="Nu3")
 
-
 # Main loop
 try:
     logger.info("Starting loop. Ra: {}, closure: {}".format(Ra, closure_name))
     start_run_time = time.time()
     while model.solver.ok:
-        model.solver.step(model.dt)
+        model.solver.step(dt)
         if (model.solver.iteration-1) % 10 == 0:
             logger.info("\nIteration: {:d}, Time: {:e}\n".format(model.solver.iteration, model.solver.sim_time))
 
