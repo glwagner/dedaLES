@@ -16,208 +16,208 @@ from dedalus.extras import flow_tools
 
 import dedaLES
 
-debug = False
+# Partly from Table 2 in Kerr (1996), partly new:
+kerr_parameters = {
+     '1': {'Ra':    50000, 'nh':  64, 'nz': 32, 'spinup_time': 200, 'equil_iters': 1000, 'stats_iters': 40000},  
+     '2': {'Ra':   100000, 'nh':  64, 'nz': 32, 'spinup_time': 200, 'equil_iters': 1000, 'stats_iters': 40000},
+     '3': {'Ra':   200000, 'nh':  64, 'nz': 32, 'spinup_time': 200, 'equil_iters': 1000, 'stats_iters': 40000},
+     '4': {'Ra':   400000, 'nh':  96, 'nz': 48, 'spinup_time': 200, 'equil_iters': 1000, 'stats_iters': 40000},
+     '5': {'Ra':   500000, 'nh':  96, 'nz': 48, 'spinup_time': 200, 'equil_iters': 1000, 'stats_iters': 40000},
+     '6': {'Ra':  1000000, 'nh': 128, 'nz': 48, 'spinup_time': 200, 'equil_iters': 1000, 'stats_iters': 40000},
+     '7': {'Ra':  2500000, 'nh': 128, 'nz': 48, 'spinup_time': 200, 'equil_iters': 1000, 'stats_iters': 40000},
+     '8': {'Ra':  5000000, 'nh': 192, 'nz': 64, 'spinup_time': 200, 'equil_iters': 1000, 'stats_iters': 40000},
+     '9': {'Ra': 10000000, 'nh': 192, 'nz': 64, 'spinup_time': 200, 'equil_iters': 1000, 'stats_iters': 40000},
+    '10': {'Ra': 20000000, 'nh': 288, 'nz': 96, 'spinup_time': 200, 'equil_iters': 1000, 'stats_iters': 40000},
+}
+
+def identifier(m): return "nh{:d}_nz{:d}_Ra{:d}".format(m.nx, m.nz, m.Ra)
+
+def set_rayleigh_benard_bcs(model):
+    model.set_bc("no penetration", "top", "bottom")
+    model.set_bc("no slip", "top", "bottom")
+    model.problem.add_bc("right(b) = 0")
+    model.problem.add_bc("left(b) = Δb")
+
+def add_nusselt_numbers(flow):
+    flow.add_property("1 + w*b/κ", name="Nu1")
+    flow.add_property("1 + ε/κ", name="Nu2")
+    flow.add_property("χ/κ", name="Nu3")
+
 logger = logging.getLogger(__name__)
 
-# From Table 2 in Kerr (1996):
-kerr_key = {
-    '1': 50000,
-    '2': 100000,
-    '3': 200000,
-    '4': 400000,
-    '5': 500000,
-    '6': 1000000,
-    '7': 2500000,
-    '8': 5000000
-}
+# Setup
+if len(sys.argv) == 1 or sys.argv[1] is 'debug':
+    debug = True
+    run = '1'
+else:
+    debug = False
+    run = sys.argv[1]
 
-kerr_parameters = {
-    50000: {          'nh' : 64,
-                      'nz' : 32,
-                      't0' : 24.0,
-                      'tf' : 44.0,
-                      'dt' : 0.0025,
-             'spinup_time' : 100,
-                   'iters' : 40000,
-            },
-   100000: {          'nh' : 64,
-                      'nz' : 32,
-                      't0' : 24.0,
-                      'tf' : 44.0,
-                      'dt' : 0.0025,
-             'spinup_time' : 100,
-                   'iters' : 40000,
-            },
-   200000: {          'nh' : 64,
-                      'nz' : 32,
-                      't0' : 24.0,
-                      'tf' : 44.0,
-                      'dt' : 0.0025,
-             'spinup_time' : 100,
-                   'iters' : 40000,
-            },
-   400000: {          'nh' : 96,
-                      'nz' : 48,
-                      't0' : 26.0,
-                      'tf' : 44.0,
-                      'dt' : 0.0025,
-             'spinup_time' : 100,
-                   'iters' : 40000,
-            },
-   500000: {          'nh' : 96,
-                      'nz' : 48,
-                      't0' : 27.0,
-                      'tf' : 40.0,
-                      'dt' : 0.0025,
-             'spinup_time' : 100,
-                   'iters' : 40000,
-            },
-  1000000: {          'nh' : 128,
-                      'nz' : 48,
-                      't0' : 26.0,
-                      'tf' : 1000.0, 
-                      'dt' : 0.0025,
-             'spinup_time' : 100,
-                   'iters' : 40000,
-            },
-  2500000: {          'nh' : 128,
-                      'nz' : 48,
-                      't0' : 26.0,
-                      'tf' : 36.0,
-                      'dt' : 0.0025,
-             'spinup_time' : 100,
-                   'iters' : 40000,
-            },
-  5000000: {          'nh' : 192,
-                      'nz' : 64,
-                      't0' : 49.0,
-                      'tf' : 64.0,
-                      'dt' : 0.0025,
-             'spinup_time' : 100,
-                   'iters' : 40000,
-            },
-}
-
-
-def identifier(model):
-    return "nh{:d}_nz{:d}_dt{:.0f}_Ra{:d}".format(model.nx, model.nz, 
-        10000*kerr_parameters[model.Ra]['dt'], model.Ra)
-        
 # Rayleigh number. Ra = Δb*L^3 / ν*κ = Δb*L^3*Pr / ν^2
-Ra = kerr_key[sys.argv[1]]
+Ra = kerr_parameters[run]['Ra']
+closure = None
 
 # Parameters
-dt = kerr_parameters[Ra]['dt']
 Lx = Ly = 6.0                 # Horizonal extent
 Lz = 1.0                      # Vertical extent
 Pr = 0.7                      # Prandtl number
-f  = 0.0                      # Coriolis parameter
-a  = 1e-3                     # Noise amplitude for initial condition
 Δb = 1.0                      # Buoyancy difference
 ν  = np.sqrt(Δb*Pr*Lz**3/Ra)  # Viscosity. ν = sqrt(Pr/Ra) with Lz=Δb=1
 κ  = ν/Pr                     # Thermal diffusivity 
-log_cadence = 100
 
-if debug:
+a  = 1e-1                     # Noise amplitude for initial condition
+dt0 = 1e-4
+CFL_cadence = 10
+CFL_safety = 0.5
+
+nx = ny = kerr_parameters[run]['nh']
+nz = kerr_parameters[run]['nz']
+spinup_log_cadence = 100
+spinup_time = kerr_parameters[run]['spinup_time']
+equil_iters = kerr_parameters[run]['equil_iters']
+stats_iters = kerr_parameters[run]['stats_iters']
+
+if debug: # Overwrite a few things
     nx = ny = nz = 8
-    spinup_time = 10*dt
-else:
-    nx = ny = kerr_parameters[Ra]['nh']
-    nz = kerr_parameters[Ra]['nz']
-    spinup_time = kerr_parameters[Ra]['spinup_time']
-
-# Construct model
-closure = None
-model = dedaLES.BoussinesqChannelFlow(Lx=Lx, Ly=Ly, Lz=Lz, nx=nx, ny=ny, nz=nz, ν=ν, κ=κ, Δb=Δb, 
-                                      closure=closure, nu=ν, V=Lx*Ly*Lz, H=Lz, Ra=Ra)
-model.set_bc("no penetration", "top", "bottom")
-model.set_bc("no slip", "top", "bottom")
-model.problem.add_bc("right(b) = 0")
-model.problem.add_bc("left(b) = Δb")
-
-model.build_solver(timestepper='SBDF3')
-
-logger.info("Simulation identifier: {}\n".format(identifier(model)))
-
-# Analysis: Some Timesteps
+    spinup_time = 10*dt0
+    spinup_log_cadence = 1
+    equil_iters = 10
+    stats_iters = 10
+    
 if closure is None: closure_name = 'DNS'
 else:               closure_name = closure.__class__.__name__
 
+logger.info("""\n\n
+    *** Rayleigh-Benard convection ***\n
+    Ra: {}
+    nh: {}
+    nz: {}
+    closure: {}\n\n""".format(Ra, nx, nz, closure_name))
+
+
+##
+## Spinup!
+##
+
+nx_spinup = int(nx/2)
+ny_spinup = int(ny/2)
+nz_spinup = int(nz/2)
+
+spinup_model = dedaLES.BoussinesqChannelFlow(Lx=Lx, Ly=Ly, Lz=Lz, nx=nx_spinup, ny=ny_spinup, nz=nz_spinup, ν=ν, κ=κ, Δb=Δb, closure=closure, Ra=Ra)
+set_rayleigh_benard_bcs(spinup_model)
+spinup_model.build_solver(timestepper='SBDF3')
+
 # Set initial condition: unstable buoyancy grad + random perturbations
-noise = dedaLES.random_noise(model.domain)
-z = model.z
-pert = a * noise * z * (Lz - z)
-u0 = pert / Lz
-b0 = (z - pert) / Lz
-model.set_fields(u=u0, b=b0)
-model.stop_at(sim_time=spinup_time)
+noise = a * dedaLES.random_noise(spinup_model.domain) * spinup_model.z * (Lz - spinup_model.z) / Lz**2,
+spinup_model.set_fields(
+    u = noise,
+    v = noise,
+    w = noise,
+    b = spinup_model.z/Lz - noise
+)
+spinup_model.stop_at(sim_time=spinup_time)
 
-# CFL
-CFL = flow_tools.CFL(model.solver, initial_dt=dt, cadence=10, safety=0.5)
-CFL.add_velocities(('u', 'v', 'w'))
+# Make CFL
+spinup_CFL = flow_tools.CFL(spinup_model.solver, initial_dt=dt0, cadence=10, max_change=1.5, safety=0.5)
+spinup_CFL.add_velocities(('u', 'v', 'w'))
 
-# Flow properties
-spinup = flow_tools.GlobalFlowProperty(model.solver, cadence=log_cadence)
-spinup.add_property("sqrt(u*u + v*v + w*w) / nu", name='Re_domain')
+# Flow properties: Reynolds number and three Nusselt numbers
+spinup_stats = flow_tools.GlobalFlowProperty(spinup_model.solver, cadence=spinup_log_cadence)
+spinup_stats.add_property("sqrt(u*u + v*v + w*w) / ν", name='Re_domain')
+add_nusselt_numbers(spinup_stats)
 
-# Three Nusselt numbers
-spinup.add_property("1 + w*b/κ", name="Nu1")
-spinup.add_property("1 + ε/κ", name="Nu2")
-spinup.add_property("χ/κ", name="Nu3")
-
-# Main loop
+# Spinup loop with coarse model
 try:
-    logger.info("Starting loop. Ra: {}, closure: {}".format(Ra, closure_name))
+    logger.info("Starting coarse spinup. Ra: {}, closure: {}".format(Ra, closure_name))
     start_run_time = time.time()
-    while model.solver.ok:
-        dt = CFL.compute_dt()
-        model.solver.step(dt)
-        if (model.solver.iteration-1) % log_cadence == 0:
-            logger.info("iter: {: 7d}, dt: {:e}, t: {:.2f}, max Re: {:.0f}, Nu1: {:.2f}, Nu2: {:.2f}, Nu3: {:.2f}".format(
-                            model.solver.iteration, dt, model.solver.sim_time, spinup.max("Re_domain"), 
-                            spinup.volume_average("Nu1"), spinup.volume_average("Nu2"), spinup.volume_average("Nu3")))
+    while spinup_model.solver.ok:
+        dt = spinup_CFL.compute_dt()
+        spinup_model.solver.step(dt)
+        if (spinup_model.solver.iteration-1) % spinup_log_cadence == 0:
+            logger.info(
+                "iter: {: 7d}, dt: {:e}, t: {:.2f}, max Re: {:.0f}, Nu1: {:.2f}, Nu2: {:.2f}, Nu3: {:.2f}".format(
+                spinup_model.solver.iteration, dt, spinup_model.solver.sim_time, spinup_stats.max("Re_domain"), 
+                spinup_stats.volume_average("Nu1"), spinup_stats.volume_average("Nu2"), spinup_stats.volume_average("Nu3")))
 except:
     logger.error('Exception raised, triggering end of main loop.')
     raise
 
-finally:
-    end_run_time = time.time()
-    logger.info('Iterations: %i' %model.solver.iteration)
-    logger.info('Sim end time: %f' %model.solver.sim_time)
-    logger.info('Run time: %.2f sec' %(end_run_time-start_run_time))
-    logger.info('Run time: %f cpu-hr' %((end_run_time-start_run_time)/3600 * model.domain.dist.comm_cart.size))
+run_time = time.time() - start_run_time
+logger.info("""\n
+    *** Spinup complete. Starting equilibration. ***\n
+    Run time: {:f} sec
+    Run time: {:f} cpu-hr\n\n""".format(run_time, run_time/3600 * spinup_model.domain.dist.comm_cart.size))
 
-logger.info("\n\n Spinup complete for Ra: {}, closure: {}".format(Ra, closure_name))
+##
+## Equilibration!
+##
+
+model = dedaLES.BoussinesqChannelFlow(Lx=Lx, Ly=Ly, Lz=Lz, nx=nx, ny=ny, nz=nz, ν=ν, κ=κ, Δb=Δb, closure=closure, Ra=Ra)
+set_rayleigh_benard_bcs(model)
+model.build_solver(timestepper='SBDF3')
+
+# Initialize full-resolution model
+spinup_model.u.set_scales(2)
+spinup_model.v.set_scales(2)
+spinup_model.w.set_scales(2)
+spinup_model.b.set_scales(2)
+
+model.u['g'] = spinup_model.u['g']
+model.v['g'] = spinup_model.v['g']
+model.w['g'] = spinup_model.w['g']
+model.b['g'] = spinup_model.b['g']
+
+spinup_model = None # deallocate
 
 # Reset
-model.solver.iteration = 0
-model.stop_at(iteration=kerr_parameters[Ra]['iters'])
-dt = kerr_parameters[Ra]['dt']
+model.stop_at(iteration=equil_iters)
 
-if debug: model.stop_at(iteration=10)
+# Make CFL
+equil_CFL = flow_tools.CFL(model.solver, initial_dt=dt0, cadence=CFL_cadence, safety=CFL_safety)
+equil_CFL.add_velocities(('u', 'v', 'w'))
+
+# Equilibration run
+try:
+    logger.info("Starting equilibration. Ra: {}, closure: {}".format(Ra, closure_name))
+    start_run_time = time.time()
+    while model.solver.ok:
+        dt = equil_CFL.compute_dt()
+        model.solver.step(dt)
+except:
+    logger.error('Exception raised, triggering end of main loop.')
+    raise
+
+run_time = time.time() - start_run_time
+logger.info("""\n
+    *** Equilibration complete. Starting statistics gathering.\n
+    Run time: {:f} sec
+    Run time: {:f} cpu-hr\n\n""".format(run_time, run_time/3600 * model.domain.dist.comm_cart.size))
+
+
+##
+## Statistics!
+##
+
+# Reset
+model.stop_at(iteration=equil_iters+stats_iters)
+dt *= 0.25 # Fix time-step at safe value
 
 # Flow properties
 stats = flow_tools.GlobalFlowProperty(model.solver, cadence=1)
+add_nusselt_numbers(stats)
 
-# Three Nusselt numbers
-stats.add_property("1 + w*b/κ", name="Nu1")
-stats.add_property("1 + ε/κ", name="Nu2")
-stats.add_property("χ/κ", name="Nu3")
-
-t = [0.0]
-Nu1 = [spinup.volume_average("Nu1")] 
-Nu2 = [spinup.volume_average("Nu2")]
-Nu3 = [spinup.volume_average("Nu3")]
-
+t, Nu1, Nu2, Nu3 = [], [], [], []
 nusselt_filename = "nusselt_{}_{}".format(identifier(model), closure_name)
 
 def save_arrays(filename, **kwargs):
-    for k, a in kwargs.items():
-        kwargs[k] = np.array(a)
-    np.savez(nusselt_filename, **kwargs)
+    if MPI.COMM_WORLD.Get_rank() is 0: 
+        for k, a in kwargs.items():
+            kwargs[k] = np.array(a)
+        np.savez(filename, **kwargs)
 
 try: 
     logger.info("Gathering statistics with dt = {:e}...".format(dt))
+    start_run_time = time.time()
     while model.solver.ok:
         model.solver.step(dt)
 
@@ -229,10 +229,15 @@ try:
         logger.info("iter: {: 7d}, Nu1: {:.2f}, Nu2: {:.2f}, Nu3: {:.2f}".format(model.solver.iteration, Nu1[-1], Nu2[-1], Nu3[-1]))
                             
 except:
-    if MPI.COMM_WORLD.Get_rank() is 0: save_arrays(nusselt_filename, Nu1=Nu1, Nu2=Nu2, Nu3=Nu3, t=t) 
+    save_arrays(nusselt_filename, Nu1=Nu1, Nu2=Nu2, Nu3=Nu3, t=t) 
     logger.error('Exception raised, triggering end of main loop.')
     raise
 
 finally:
-    if MPI.COMM_WORLD.Get_rank() is 0: save_arrays(nusselt_filename, Nu1=Nu1, Nu2=Nu2, Nu3=Nu3, t=t) 
-    logger.info("Statistics gathering complete.")
+    save_arrays(nusselt_filename, Nu1=Nu1, Nu2=Nu2, Nu3=Nu3, t=t) 
+
+    run_time = time.time() - start_run_time
+    logger.info("""\n
+        *** Statistics gathering complete.\n
+        Run time: {:f} sec
+        Run time: {:f} cpu-hr\n\n""".format(run_time, run_time/3600 * model.domain.dist.comm_cart.size))
