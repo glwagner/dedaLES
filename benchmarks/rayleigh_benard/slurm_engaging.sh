@@ -9,10 +9,11 @@
 
 # Job
 #SBATCH --partition=sched_mit_hill
-#SBATCH --nodes=2
+#SBATCH --nodes=8
 #SBATCH --ntasks-per-node=16
+#SBATCH --mem-per-cpu=3500
 #SBATCH --time=12:00:00
-#SBATCH --job-name="kerr5"
+#SBATCH --job-name="kerr10"
 
 # Streams
 #SBATCH --output=job_%j.out
@@ -22,7 +23,7 @@
 . /home/glwagner/software/miniconda3/etc/profile.d/conda.sh
 conda activate dedalus
 
-run="5"
+run="10"
 
 # Content
 mpiexec python3 rayleigh_benard_kerr.py $run >> kerr_$run.out
