@@ -72,13 +72,13 @@ kerr_parameters = {
     
 # Re = U*L/ν = 
 # Rayleigh number. Ra = Δb*L^3 / ν*κ = Δb*L^3*Pr / ν^2
-ri = 0                #rayleigh index
+ri = 5                #rayleigh index
 ker_ind = str(ri)     #kerr index
 ralist = [50000,100000,200000,400000,500000,1000000,2500000,5000000,10000000,20000000]
-dtlist = [0.025,0.025,0.025,0.025,0.0025,0.0025,0.0025,0.0025,0.0025,0.0025]
-itlist = [40000,40000,40000,40000,40000,40000,40000,40000,40000,40000,40000,40000]
+dtlist = np.array([0.025, 0.025, 0.025, 0.025, 0.025/2, 0.005, 0.005, 0.005, 0.005, 0.001, 0.0001])
+itlist = [40000,40000,40000,40000,40000,40000,40000,40000,40000,40000,80000,80000]
 Ra = ralist[ri]
-pt = True #load from previous simulation
+pt = False #load from previous simulation
 absdirec = os.path.abspath('')
 
 
@@ -99,9 +99,9 @@ a  = 1e-3                   # Noise amplitude for initial condition
 κ = ν/Pr                      # Thermal diffusivity 
 
 # Construct model
-closure = dedaLES.AnisotropicMinimumDissipation()
+#closure = dedaLES.AnisotropicMinimumDissipation()
 #closure = dedaLES.ConstantSmagorinsky()
-#closure = None
+closure = None
 
 
 
