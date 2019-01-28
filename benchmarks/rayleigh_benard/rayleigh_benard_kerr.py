@@ -18,16 +18,17 @@ import dedaLES
 
 # Partly from Table 2 in Kerr (1996), partly new:
 kerr_parameters = {
-     '1': {'Ra':    50000, 'nh':  64, 'nz': 32, 'spinup_time': 100, 'equil_time': 40, 'stats_time': 40},  
-     '2': {'Ra':   100000, 'nh':  64, 'nz': 32, 'spinup_time': 100, 'equil_time': 40, 'stats_time': 40},
-     '3': {'Ra':   200000, 'nh':  64, 'nz': 32, 'spinup_time': 100, 'equil_time': 40, 'stats_time': 40},
-     '4': {'Ra':   400000, 'nh':  96, 'nz': 48, 'spinup_time': 100, 'equil_time': 20, 'stats_time': 20},
-     '5': {'Ra':   500000, 'nh':  96, 'nz': 48, 'spinup_time': 100, 'equil_time': 20, 'stats_time': 20},
-     '6': {'Ra':  1000000, 'nh': 128, 'nz': 48, 'spinup_time': 100, 'equil_time': 10, 'stats_time': 10},
-     '7': {'Ra':  2500000, 'nh': 128, 'nz': 48, 'spinup_time': 100, 'equil_time': 10, 'stats_time': 10},
-     '8': {'Ra':  5000000, 'nh': 192, 'nz': 64, 'spinup_time': 100, 'equil_time': 10, 'stats_time': 10},
-     '9': {'Ra': 10000000, 'nh': 192, 'nz': 64, 'spinup_time': 100, 'equil_time': 10, 'stats_time': 10},
-    '10': {'Ra': 20000000, 'nh': 288, 'nz': 96, 'spinup_time': 100, 'equil_time': 10, 'stats_time': 10},
+     '1': {'Ra':    50000, 'nh':  64, 'nz':  32, 'spinup_time': 100, 'equil_time': 40, 'stats_time': 40},  
+     '2': {'Ra':   100000, 'nh':  64, 'nz':  32, 'spinup_time': 100, 'equil_time': 40, 'stats_time': 40},
+     '3': {'Ra':   200000, 'nh':  64, 'nz':  32, 'spinup_time': 100, 'equil_time': 40, 'stats_time': 40},
+     '4': {'Ra':   400000, 'nh':  96, 'nz':  48, 'spinup_time': 100, 'equil_time': 20, 'stats_time': 20},
+     '5': {'Ra':   500000, 'nh':  96, 'nz':  48, 'spinup_time': 100, 'equil_time': 20, 'stats_time': 20},
+     '6': {'Ra':  1000000, 'nh': 128, 'nz':  48, 'spinup_time': 100, 'equil_time': 10, 'stats_time': 10},
+     '7': {'Ra':  2500000, 'nh': 128, 'nz':  48, 'spinup_time': 100, 'equil_time': 10, 'stats_time': 10},
+     '8': {'Ra':  5000000, 'nh': 192, 'nz':  64, 'spinup_time': 100, 'equil_time': 10, 'stats_time': 10},
+     '9': {'Ra': 10000000, 'nh': 192, 'nz':  64, 'spinup_time': 100, 'equil_time': 10, 'stats_time': 10},
+    '10': {'Ra': 20000000, 'nh': 288, 'nz':  96, 'spinup_time':  40, 'equil_time': 10, 'stats_time': 10},
+    '11': {'Ra': 20000000, 'nh': 576, 'nz': 192, 'spinup_time':  40, 'equil_time': 10, 'stats_time': 10},
 }
 
 def identifier(m): return "nh{:d}_nz{:d}_Ra{:d}".format(m.nx, m.nz, m.Ra)
@@ -57,9 +58,15 @@ else:
     debug = False
     run = sys.argv[1]
 
+if len(sys.argv) > 2:
+    closure = getattr(dedaLES, sys.argv[2])()
+    closure_name = sys.argv[2]
+else:
+    closure = None
+    closure_name = 'DNS'
+
 # Rayleigh number. Ra = Δb*L^3 / ν*κ = Δb*L^3*Pr / ν^2
 Ra = kerr_parameters[run]['Ra']
-closure = None
 
 # Parameters
 Lx = Ly = 6.0                 # Horizonal extent
@@ -70,17 +77,22 @@ Pr = 0.7                      # Prandtl number
 κ  = ν/Pr                     # Thermal diffusivity 
 
 a  = 1e-1                     # Noise amplitude for initial condition
-dt0 = 1e-4
+dt0 = 1e-4                    # Small fraction of advection time-scale, τ_adv = 1
 CFL_cadence = 10
 CFL_safety = 0.5
 
 nx = ny = kerr_parameters[run]['nh']
 nz = kerr_parameters[run]['nz']
+
 spinup_scale = 2
 spinup_log_cadence = 100
 spinup_time = kerr_parameters[run]['spinup_time']
+
+equil_log_cadence = 10
 equil_time = kerr_parameters[run]['equil_time']
-stats_timeiters = kerr_parameters[run]['stats_time']
+
+stats_dt_frac = 0.25 # fraction by which to reduce time-step for stats-gathering
+stats_time = kerr_parameters[run]['stats_time']
 
 if debug: # Overwrite a few things
     nx = ny = nz = 8
@@ -91,9 +103,7 @@ if debug: # Overwrite a few things
     equil_time = 10*dt0
     stats_time = 10
     
-if closure is None: closure_name = 'DNS'
-else:               closure_name = closure.__class__.__name__
-
+# Messaging
 logger.info("""\n\n
     *** Rayleigh-Benard convection ***\n
     Ra: {}
@@ -101,8 +111,7 @@ logger.info("""\n\n
     nz: {}
     closure: {}\n\n""".format(Ra, nx, nz, closure_name))
 
-
-##
+## 
 ## Spinup!
 ##
 
@@ -190,7 +199,7 @@ equil_CFL = flow_tools.CFL(model.solver, initial_dt=dt0, cadence=CFL_cadence, sa
 equil_CFL.add_velocities(('u', 'v', 'w'))
 
 # Flow properties
-equil_stats = flow_tools.GlobalFlowProperty(model.solver, cadence=spinup_log_cadence)
+equil_stats = flow_tools.GlobalFlowProperty(model.solver, cadence=equil_log_cadence)
 add_reynolds_number(equil_stats)
 add_nusselt_numbers(equil_stats)
 
@@ -203,11 +212,11 @@ try:
         dt = equil_CFL.compute_dt()
         model.solver.step(dt)
 
-        if (model.solver.iteration-1) % spinup_log_cadence == 0:
+        if (model.solver.iteration-1) % equil_log_cadence == 0:
             compute_time = time.time() - log_time
             log_time = time.time()
             logger.info(
-                "iter: {: 7d}, dt: {:e}, t: {: 8.2f}, t_wall: {: 4.0f} s, max Re: {:.0f}, Nu1: {:.2f}, Nu2: {:.2f}, Nu3: {:.2f}".format(
+                "iter: {: 6d}, dt: {:.2e}, t: {: 6.2f}, t_wall: {: 5.0f} s, max Re: {:.0f}, Nu1: {:.2f}, Nu2: {:.2f}, Nu3: {:.2f}".format(
                 model.solver.iteration, dt, model.solver.sim_time, compute_time, equil_stats.max("Re"), 
                 equil_stats.volume_average("Nu1"), equil_stats.volume_average("Nu2"), equil_stats.volume_average("Nu3")))
 
@@ -228,7 +237,7 @@ logger.info("""\n
 
 # Reset
 model.stop_at(iteration=model.solver.sim_time+stats_time)
-dt *= 0.25 # Fix time-step at safe value
+dt *= stats_dt_frac # Fix time-step at safe value
 
 # Flow properties
 stats = flow_tools.GlobalFlowProperty(model.solver, cadence=1)
