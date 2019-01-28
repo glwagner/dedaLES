@@ -28,7 +28,7 @@ kerr_parameters = {
      '7': {'Ra':  2500000, 'nh': 128, 'nz':  48, 'spinup_time': 100, 'equil_time': 10, 'stats_time': 10},
      '8': {'Ra':  5000000, 'nh': 192, 'nz':  64, 'spinup_time': 100, 'equil_time': 10, 'stats_time': 10},
      '9': {'Ra': 10000000, 'nh': 192, 'nz':  64, 'spinup_time': 100, 'equil_time': 10, 'stats_time': 10},
-    '10': {'Ra': 20000000, 'nh': 288, 'nz':  96, 'spinup_time':  30, 'equil_time': 10, 'stats_time': 10},
+    '10': {'Ra': 20000000, 'nh': 288, 'nz':  96, 'spinup_time':  30, 'equil_time': 20, 'stats_time': 10},
     '11': {'Ra': 20000000, 'nh': 576, 'nz': 192, 'spinup_time':  30, 'equil_time': 10, 'stats_time': 10},
 }
 
@@ -45,9 +45,9 @@ def add_reynolds_number(flow):
     flow.add_property("sqrt(u*u + v*v + w*w) / ν", name='Re')
 
 def add_nusselt_numbers(flow):
-    flow.add_property("1 + w*b/κ", name="Nu1")
-    flow.add_property("1 + ε/κ", name="Nu2")
-    flow.add_property("χ/κ", name="Nu3")
+    flow.add_property("1 + w*b/κ", name="Nu_wb")
+    flow.add_property("1 + ε/κ", name="Nu_ε")
+    flow.add_property("χ/κ", name="Nu_χ")
 
 logger = logging.getLogger(__name__)
 
@@ -66,43 +66,42 @@ else:
     closure = None
     closure_name = 'DNS'
 
-# Rayleigh number. Ra = Δb*L^3 / ν*κ = Δb*L^3*Pr / ν^2
-Ra = kerr_parameters[run]['Ra']
-
 # Parameters
-Lx = Ly = 6.0                 # Horizonal extent
-Lz = 1.0                      # Vertical extent
-Pr = 0.7                      # Prandtl number
-Δb = 1.0                      # Buoyancy difference
-ν  = np.sqrt(Δb*Pr*Lz**3/Ra)  # Viscosity. ν = sqrt(Pr/Ra) with Lz=Δb=1
-κ  = ν/Pr                     # Thermal diffusivity 
+Ra = kerr_parameters[run]['Ra']         # Rayleigh number. Ra = Δb*L^3 / ν*κ = Δb*L^3*Pr / ν^2
+nx = ny = kerr_parameters[run]['nh']    # Horizontal resolution
+nz = kerr_parameters[run]['nz']         # Vertical resolution
+Lx = Ly = 6.0                           # Horizonal extent
+Lz = 1.0                                # Vertical extent
+Pr = 0.7                                # Prandtl number
+Δb = 1.0                                # Buoyancy difference
+a  = 1e-1                               # Noise amplitude for initial condition
+dt0 = 1e-4                              # Initial time-step for spinup and equilibration: 
+                                        #   small frac of non-dim time, t=1.
+ν  = np.sqrt(Δb*Pr*Lz**3/Ra)            # Viscosity. ν = sqrt(Pr/Ra) with Lz=Δb=1
+κ  = ν/Pr                               # Thermal diffusivity 
 
-a  = 1e-1                     # Noise amplitude for initial condition
-dt0 = 1e-4                    # Small fraction of advection time-scale, τ_adv = 1
 CFL_cadence = 10
 CFL_safety = 0.5
 
-nx = ny = kerr_parameters[run]['nh']
-nz = kerr_parameters[run]['nz']
-
-spinup_scale = 2
-spinup_log_cadence = 100
 spinup_time = kerr_parameters[run]['spinup_time']
+spinup_coarsening_factor = 2
+spinup_log_cadence = 100
 
-equil_log_cadence = 10
 equil_time = kerr_parameters[run]['equil_time']
+equil_log_cadence = 100
 
 stats_dt_frac = 0.25 # fraction by which to reduce time-step for stats-gathering
 stats_time = kerr_parameters[run]['stats_time']
 
-if debug: # Overwrite a few things
+if debug: # Overwrite a few things for a test run
     nx = ny = nz = 8
-    spinup_time = 10*dt0
     CFL_cadence = np.inf
     CFL_safety = 0.1
+    spinup_time = 10*dt0
     spinup_log_cadence = 1
+    equil_log_cadence = 1
     equil_time = 10*dt0
-    stats_time = 10
+    stats_time = 10*dt0
     
 # Messaging
 logger.info("""\n\n
@@ -110,15 +109,16 @@ logger.info("""\n\n
     Ra: {}
     nh: {}
     nz: {}
-    closure: {}\n\n""".format(Ra, nx, nz, closure_name))
+    closure: {}\n\n""".format(Ra, nx, nz, closure_name)
+)
 
 ## 
 ## Spinup!
 ##
 
-nx_spinup = int(nx/spinup_scale)
-ny_spinup = int(ny/spinup_scale)
-nz_spinup = int(nz/spinup_scale)
+nx_spinup = int(nx/spinup_coarsening_factor)
+ny_spinup = int(ny/spinup_coarsening_factor)
+nz_spinup = int(nz/spinup_coarsening_factor)
 
 spinup_model = dedaLES.BoussinesqChannelFlow(
     Lx=Lx, Ly=Ly, Lz=Lz, nx=nx_spinup, ny=ny_spinup, nz=nz_spinup, ν=ν, κ=κ, Δb=Δb, closure=closure, Ra=Ra)
@@ -156,28 +156,30 @@ try:
             compute_time = time.time() - log_time
             log_time = time.time()
             logger.info(
-                "iter: {: 6d}, dt: {:.2e}, t: {: 6.2f}, t_wall: {: 5.0f} s, max Re: {:.0f}, Nu1: {:.2f}, Nu2: {:.2f}, Nu3: {:.2f}".format(
-                spinup_model.solver.iteration, dt, spinup_model.solver.sim_time, compute_time, spinup_stats.max("Re"), 
-                spinup_stats.volume_average("Nu1"), spinup_stats.volume_average("Nu2"), spinup_stats.volume_average("Nu3")))
+                "i: {:d}, t: {:.2e}, t_wall: {:.1f} s, dt: {:.2e}, max Re: {:.0f}, Nu_wb: {:.2f}, Nu_ε: {:.2f}, Nu_χ: {:.2f}".format(
+                spinup_model.solver.iteration, spinup_model.solver.sim_time, compute_time, dt, spinup_stats.max("Re"), 
+                spinup_stats.volume_average("Nu_wb"), spinup_stats.volume_average("Nu_ε"), spinup_stats.volume_average("Nu_χ")))
 except:
-    logger.error('Exception raised, triggering end of main loop.')
+    logger.error('Exception raised, triggering end of spinup loop.')
     raise
 
-run_time = time.time() - start_run_time
+spinup_wall_time = time.time() - start_run_time
 logger.info("""\n
     *** Spinup complete. Starting equilibration. ***\n
-    Run time: {:f} sec
-    Run time: {:f} cpu-hr\n\n""".format(run_time, run_time/3600 * spinup_model.domain.dist.comm_cart.size))
+    Spinup time: {:f} sec ({:.2f} hr)
+    Spinup time: {:f} cpu-hr\n\n""".format(
+        spinup_wall_time, spinup_wall_time/3500, spinup_wall_time/3600 * spinup_model.domain.dist.comm_cart.size)
+)
 
 ##
 ## Equilibration!
 ##
 
 # Store final state of coarse model
-spinup_model.u.set_scales(spinup_scale)
-spinup_model.v.set_scales(spinup_scale)
-spinup_model.w.set_scales(spinup_scale)
-spinup_model.b.set_scales(spinup_scale)
+spinup_model.u.set_scales(spinup_coarsening_factor)
+spinup_model.v.set_scales(spinup_coarsening_factor)
+spinup_model.w.set_scales(spinup_coarsening_factor)
+spinup_model.b.set_scales(spinup_coarsening_factor)
 
 u0 = np.copy(spinup_model.u['g']) 
 v0 = np.copy(spinup_model.v['g'])
@@ -218,19 +220,23 @@ try:
             compute_time = time.time() - log_time
             log_time = time.time()
             logger.info(
-                "iter: {: 6d}, dt: {:.2e}, t: {: 6.2f}, t_wall: {: 5.0f} s, max Re: {:.0f}, Nu1: {:.2f}, Nu2: {:.2f}, Nu3: {:.2f}".format(
-                model.solver.iteration, dt, model.solver.sim_time, compute_time, equil_stats.max("Re"), 
-                equil_stats.volume_average("Nu1"), equil_stats.volume_average("Nu2"), equil_stats.volume_average("Nu3")))
+                "i: {:d}, t: {:.2e}, t_wall: {:.0f} s, dt: {:.2e}, max Re: {:.0f}, Nu_wb: {:.2f}, Nu_ε: {:.2f}, Nu_χ: {:.2f}".format(
+                model.solver.iteration, model.solver.sim_time, compute_time, dt, equil_stats.max("Re"), 
+                equil_stats.volume_average("Nu_wb"), equil_stats.volume_average("Nu_ε"), equil_stats.volume_average("Nu_χ")))
 
 except:
-    logger.error('Exception raised, triggering end of main loop.')
+    logger.error('Exception raised, triggering end of equilibration loop.')
     raise
 
-run_time = time.time() - start_run_time
+equil_wall_time = time.time() - start_run_time
 logger.info("""\n
     *** Equilibration complete. Starting statistics gathering.\n
-    Run time: {:f} sec
-    Run time: {:f} cpu-hr\n\n""".format(run_time, run_time/3600 * model.domain.dist.comm_cart.size))
+    Equilibration time: {:f} sec ({:.2f} hr)
+    Equilibration + spinup time: {:f} sec ({:.2f} hr)
+    Equilibration time: {:f} cpu-hr\n\n""".format(equil_wall_time, equil_wall_time/3600, 
+        spinup_wall_time+equil_wall_time, (spinup_wall_time+equil_wall_time)/3600, 
+        equil_wall_time/3600 * model.domain.dist.comm_cart.size)
+)
 
 
 ##
@@ -238,14 +244,14 @@ logger.info("""\n
 ##
 
 # Reset
-model.stop_at(iteration=model.solver.sim_time+stats_time)
+model.stop_at(sim_time=model.solver.sim_time+stats_time)
 dt *= stats_dt_frac # Fix time-step at safe value
 
 # Flow properties
 stats = flow_tools.GlobalFlowProperty(model.solver, cadence=1)
 add_nusselt_numbers(stats)
 
-t, Nu1, Nu2, Nu3 = [], [], [], []
+t, Nu_wb, Nu_ε, Nu_χ = [], [], [], []
 nusselt_filename = "nusselt_{}_{}".format(identifier(model), closure_name)
 
 def save_arrays(filename, **kwargs):
@@ -260,23 +266,25 @@ try:
     while model.solver.ok:
         model.solver.step(dt)
 
-        Nu1.append(stats.volume_average("Nu1"))
-        Nu2.append(stats.volume_average("Nu2"))
-        Nu3.append(stats.volume_average("Nu3"))
+        Nu_wb.append(stats.volume_average("Nu_wb"))
+        Nu_ε.append(stats.volume_average("Nu_ε"))
+        Nu_χ.append(stats.volume_average("Nu_χ"))
         t.append(model.solver.sim_time)
     
-        logger.info("iter: {: 7d}, Nu1: {:.2f}, Nu2: {:.2f}, Nu3: {:.2f}".format(model.solver.iteration, Nu1[-1], Nu2[-1], Nu3[-1]))
+        logger.info("i: {:d}, Nu_wb: {:.4f}, Nu_ε: {:.4f}, Nu_χ: {:.4f}".format(model.solver.iteration, Nu_wb[-1], Nu_ε[-1], Nu_χ[-1]))
                             
 except:
-    save_arrays(nusselt_filename, Nu1=Nu1, Nu2=Nu2, Nu3=Nu3, t=t) 
-    logger.error('Exception raised, triggering end of main loop.')
+    logger.error("Exception raised, triggering end of statistics-gathering loop.")
     raise
 
 finally:
-    save_arrays(nusselt_filename, Nu1=Nu1, Nu2=Nu2, Nu3=Nu3, t=t) 
+    save_arrays(nusselt_filename, Nu_wb=Nu_wb, Nu_ε=Nu_ε, Nu_χ=Nu_χ, t=t) 
 
-    run_time = time.time() - start_run_time
-    logger.info("""\n
-        *** Statistics gathering complete.\n
-        Run time: {:f} sec
-        Run time: {:f} cpu-hr\n\n""".format(run_time, run_time/3600 * model.domain.dist.comm_cart.size))
+stats_wall_time = time.time() - start_run_time
+logger.info("""\n
+    *** Statistics gathering complete.\n
+    Statistics-gathering time: {:f} sec ({:.2f} hr)
+    Total time: {:f} sec ({:.2f} hr)
+    Run time: {:f} cpu-hr\n\n""".format(stats_wall_time, stats_wall_time/3600, spinup_wall_time+equil_wall_time+stats_wall_time,
+        (spinup_wall_time+equil_wall_time+stats_wall_time)/3600, stats_time/3600 * model.domain.dist.comm_cart.size)
+)
