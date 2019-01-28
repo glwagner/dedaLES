@@ -72,10 +72,11 @@ kerr_parameters = {
     
 # Re = U*L/ν = 
 # Rayleigh number. Ra = Δb*L^3 / ν*κ = Δb*L^3*Pr / ν^2
-ri = 4                #rayleigh index
+ri = 10                #rayleigh index
 
-ralist = [50000, 100000, 200000, 400000, 500000, 1000000, 2500000, 5000000, 10000000, 20000000]
-dtlist = [0.025, 0.025, 0.025, 0.025, 0.0025, 0.0025, 0.0025, 0.0025, 0.0025, 0.0025]
+ralist = [50000, 100000, 200000, 400000, 500000, 1000000, 2500000, 5000000, 10000000, 20000000, 50000000]
+#dtlist = [0.025, 0.025, 0.025, 0.025, 0.0025, 0.0025, 0.0025, 0.0025, 0.0025, 0.0025] #safe timesteps
+dtlist = np.array([0.025, 0.025, 0.025, 0.025, 0.025/2, 0.005, 0.005, 0.005, 0.005, 0.001, 0.0001])
 Ra = ralist[ri]
 
 
@@ -84,14 +85,15 @@ Ra = ralist[ri]
 # Fixed parameters
 nx = ny = 96
 nz = 48
-dt = 0.0025
-pt = True   #load previous state
-ker_ind = 'nx'+str(nx)+'_ny'+str(ny)+'_nz'+str(nz)+'_dt'+str(dt)+'_ri'+str(ri)     #label index
+pt = True
+#load previous state
+absdirec = os.path.abspath('')
+#ker_ind = 'nx'+str(nx)+'_ny'+str(ny)+'_nz'+str(nz)+'_dt'+str(dt)+'_ri'+str(ri)     #label index
 ker_ind = 'nx'+str(nx)+'_ny'+str(ny)+'_nz'+str(nz)+'_ri'+str(ri)
 print('outputting to '+ker_ind)
 
 #Ra = 2000               #debugging
-#nx = ny = nz = 8        #debugging
+#nx = ny = nz = 4        #debugging
 Lx = Ly = 6.0               # Horizonal extent
 Lz = 1.0                    # Vertical extent
 Pr = 0.7                    # Prandtl number
@@ -104,7 +106,7 @@ a  = 1e-3                   # Noise amplitude for initial condition
 κ = ν/Pr                      # Thermal diffusivity 
 
 # Construct model
-closure = dedaLES.AnisotropicMinimumDissipation(reg=10**(-8))
+closure = dedaLES.AnisotropicMinimumDissipation()
 model = dedaLES.BoussinesqChannelFlow(Lx=Lx, Ly=Ly, Lz=Lz, nx=nx, ny=ny, nz=nz, ν=ν, κ=κ, Δb=Δb, closure=closure, nu=ν,V=Lx*Ly*Lz)
 
 model.set_bc("no penetration", "top", "bottom")
@@ -129,7 +131,6 @@ model.stop_at(iteration=40000) #sim_time=kerr_parameters[Ra]['tf'])
 if closure is None: closure_name = 'DNS'
 else:               closure_name = closure.__class__.__name__
 
-    
 #Load previous timestepping
 if pt==True:
     ff = ker_ind+'_rayleigh_benard_snapshots_{:s}'.format(closure_name)
@@ -138,7 +139,7 @@ if pt==True:
     #note that we need to move the h5 file if we want to load from a previous state
 
 
-analysis = model.solver.evaluator.add_file_handler(ker_ind+'_rayleigh_benard_snapshots_{:s}'.format(closure_name), iter=5000, max_writes=30)
+analysis = model.solver.evaluator.add_file_handler(ker_ind+'_rayleigh_benard_snapshots_{:s}'.format(closure_name), iter=10000, max_writes=30)
 analysis.add_system(model.solver.state, layout='g')
 # we should consider saving the total state only at the final timestep for memory purposes
 
@@ -162,6 +163,9 @@ flow.add_property("sqrt(u*u + v*v + w*w) / nu", name='Re_domain')
 flow.add_property("sqrt(ε)", name='Re_dissipation')
 flow.add_property("ε", name="dissipation")
 
+#set dt, and reset the iteration number
+dt = dtlist[ri]
+model.solver.iteration = 0
 # Main loop
 try:
     logger.info('Starting loop')
