@@ -5,7 +5,8 @@ Robert M Kerr, "Rayleigh number scaling in numerical convection",
 Journal of Fluid Mechanics (1996)
 """
 
-import os, sys; sys.path.append(os.path.join("..", "..",))
+import os, sys; sys.path.append(os.getenv('DEDALES', os.path.join("..", "..")))
+
 import time, logging
 import numpy as np
 import matplotlib.pyplot as plt
@@ -27,8 +28,8 @@ kerr_parameters = {
      '7': {'Ra':  2500000, 'nh': 128, 'nz':  48, 'spinup_time': 100, 'equil_time': 10, 'stats_time': 10},
      '8': {'Ra':  5000000, 'nh': 192, 'nz':  64, 'spinup_time': 100, 'equil_time': 10, 'stats_time': 10},
      '9': {'Ra': 10000000, 'nh': 192, 'nz':  64, 'spinup_time': 100, 'equil_time': 10, 'stats_time': 10},
-    '10': {'Ra': 20000000, 'nh': 288, 'nz':  96, 'spinup_time':  40, 'equil_time': 10, 'stats_time': 10},
-    '11': {'Ra': 20000000, 'nh': 576, 'nz': 192, 'spinup_time':  40, 'equil_time': 10, 'stats_time': 10},
+    '10': {'Ra': 20000000, 'nh': 288, 'nz':  96, 'spinup_time':  30, 'equil_time': 10, 'stats_time': 10},
+    '11': {'Ra': 20000000, 'nh': 576, 'nz': 192, 'spinup_time':  30, 'equil_time': 10, 'stats_time': 10},
 }
 
 def identifier(m): return "nh{:d}_nz{:d}_Ra{:d}".format(m.nx, m.nz, m.Ra)
@@ -119,7 +120,8 @@ nx_spinup = int(nx/spinup_scale)
 ny_spinup = int(ny/spinup_scale)
 nz_spinup = int(nz/spinup_scale)
 
-spinup_model = dedaLES.BoussinesqChannelFlow(Lx=Lx, Ly=Ly, Lz=Lz, nx=nx_spinup, ny=ny_spinup, nz=nz_spinup, ν=ν, κ=κ, Δb=Δb, closure=closure, Ra=Ra)
+spinup_model = dedaLES.BoussinesqChannelFlow(
+    Lx=Lx, Ly=Ly, Lz=Lz, nx=nx_spinup, ny=ny_spinup, nz=nz_spinup, ν=ν, κ=κ, Δb=Δb, closure=closure, Ra=Ra)
 set_rayleigh_benard_bcs(spinup_model)
 spinup_model.build_solver(timestepper='SBDF3')
 
@@ -154,7 +156,7 @@ try:
             compute_time = time.time() - log_time
             log_time = time.time()
             logger.info(
-                "iter: {: 7d}, dt: {:e}, t: {: 8.2f}, t_wall: {: 4.0f} s, max Re: {:.0f}, Nu1: {:.2f}, Nu2: {:.2f}, Nu3: {:.2f}".format(
+                "iter: {: 6d}, dt: {:.2e}, t: {: 6.2f}, t_wall: {: 5.0f} s, max Re: {:.0f}, Nu1: {:.2f}, Nu2: {:.2f}, Nu3: {:.2f}".format(
                 spinup_model.solver.iteration, dt, spinup_model.solver.sim_time, compute_time, spinup_stats.max("Re"), 
                 spinup_stats.volume_average("Nu1"), spinup_stats.volume_average("Nu2"), spinup_stats.volume_average("Nu3")))
 except:
