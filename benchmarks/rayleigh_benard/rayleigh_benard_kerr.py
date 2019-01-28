@@ -18,11 +18,11 @@ import dedaLES
 
 # Partly from Table 2 in Kerr (1996), partly new:
 kerr_parameters = {
-     '1': {'Ra':    50000, 'nh':  64, 'nz': 32, 'spinup_time': 100, 'equil_time': 10, 'stats_time': 10},  
-     '2': {'Ra':   100000, 'nh':  64, 'nz': 32, 'spinup_time': 100, 'equil_time': 10, 'stats_time': 10},
-     '3': {'Ra':   200000, 'nh':  64, 'nz': 32, 'spinup_time': 100, 'equil_time': 10, 'stats_time': 10},
-     '4': {'Ra':   400000, 'nh':  96, 'nz': 48, 'spinup_time': 100, 'equil_time': 10, 'stats_time': 10},
-     '5': {'Ra':   500000, 'nh':  96, 'nz': 48, 'spinup_time': 100, 'equil_time': 10, 'stats_time': 10},
+     '1': {'Ra':    50000, 'nh':  64, 'nz': 32, 'spinup_time': 100, 'equil_time': 40, 'stats_time': 40},  
+     '2': {'Ra':   100000, 'nh':  64, 'nz': 32, 'spinup_time': 100, 'equil_time': 40, 'stats_time': 40},
+     '3': {'Ra':   200000, 'nh':  64, 'nz': 32, 'spinup_time': 100, 'equil_time': 40, 'stats_time': 40},
+     '4': {'Ra':   400000, 'nh':  96, 'nz': 48, 'spinup_time': 100, 'equil_time': 20, 'stats_time': 20},
+     '5': {'Ra':   500000, 'nh':  96, 'nz': 48, 'spinup_time': 100, 'equil_time': 20, 'stats_time': 20},
      '6': {'Ra':  1000000, 'nh': 128, 'nz': 48, 'spinup_time': 100, 'equil_time': 10, 'stats_time': 10},
      '7': {'Ra':  2500000, 'nh': 128, 'nz': 48, 'spinup_time': 100, 'equil_time': 10, 'stats_time': 10},
      '8': {'Ra':  5000000, 'nh': 192, 'nz': 64, 'spinup_time': 100, 'equil_time': 10, 'stats_time': 10},
@@ -85,6 +85,8 @@ stats_timeiters = kerr_parameters[run]['stats_time']
 if debug: # Overwrite a few things
     nx = ny = nz = 8
     spinup_time = 10*dt0
+    CFL_cadence = np.inf
+    CFL_safety = 0.1
     spinup_log_cadence = 1
     equil_time = 10*dt0
     stats_time = 10
