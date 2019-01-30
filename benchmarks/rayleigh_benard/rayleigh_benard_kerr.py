@@ -19,18 +19,19 @@ import dedaLES
 
 # Partly from Table 2 in Kerr (1996), partly new:
 kerr_parameters = {
-     '1': {'Ra':    50000, 'nh':  64, 'nz':  32, 'spinup_time': 100, 'equil_time': 40, 'stats_time': 40},  
-     '2': {'Ra':   100000, 'nh':  64, 'nz':  32, 'spinup_time': 100, 'equil_time': 40, 'stats_time': 40},
-     '3': {'Ra':   200000, 'nh':  64, 'nz':  32, 'spinup_time': 100, 'equil_time': 40, 'stats_time': 40},
-     '4': {'Ra':   400000, 'nh':  96, 'nz':  48, 'spinup_time': 100, 'equil_time': 20, 'stats_time': 20},
-     '5': {'Ra':   500000, 'nh':  96, 'nz':  48, 'spinup_time': 100, 'equil_time': 20, 'stats_time': 20},
-     '6': {'Ra':  1000000, 'nh': 128, 'nz':  48, 'spinup_time': 100, 'equil_time': 10, 'stats_time': 10},
-     '7': {'Ra':  2500000, 'nh': 128, 'nz':  48, 'spinup_time': 100, 'equil_time': 10, 'stats_time': 10},
-     '8': {'Ra':  5000000, 'nh': 192, 'nz':  64, 'spinup_time': 100, 'equil_time': 10, 'stats_time': 10},
-     '9': {'Ra': 10000000, 'nh': 192, 'nz':  64, 'spinup_time': 100, 'equil_time': 10, 'stats_time': 10},
-    '10': {'Ra': 20000000, 'nh': 288, 'nz':  96, 'spinup_time':  30, 'equil_time': 20, 'stats_time': 10},
-    '11': {'Ra': 20000000, 'nh': 576, 'nz': 192, 'spinup_time':  30, 'equil_time': 10, 'stats_time': 10},
+     '1': {'Ra':    50000, 'nh':  64, 'nz':  32, 'spinup_time': 100, 'equil_time': 40, 'stats_time': 200},  
+     '2': {'Ra':   100000, 'nh':  64, 'nz':  32, 'spinup_time': 100, 'equil_time': 40, 'stats_time': 200},
+     '3': {'Ra':   200000, 'nh':  64, 'nz':  32, 'spinup_time': 100, 'equil_time': 40, 'stats_time': 200},
+     '4': {'Ra':   400000, 'nh':  96, 'nz':  48, 'spinup_time': 100, 'equil_time': 20, 'stats_time': 100},
+     '5': {'Ra':   500000, 'nh':  96, 'nz':  48, 'spinup_time': 100, 'equil_time': 20, 'stats_time':  20},
+     '6': {'Ra':  1000000, 'nh': 128, 'nz':  48, 'spinup_time': 100, 'equil_time': 10, 'stats_time':  10},
+     '7': {'Ra':  2500000, 'nh': 128, 'nz':  48, 'spinup_time': 100, 'equil_time': 10, 'stats_time':  10},
+     '8': {'Ra':  5000000, 'nh': 192, 'nz':  64, 'spinup_time': 100, 'equil_time': 10, 'stats_time':  10},
+     '9': {'Ra': 10000000, 'nh': 192, 'nz':  64, 'spinup_time': 100, 'equil_time': 10, 'stats_time':  10},
+    '10': {'Ra': 20000000, 'nh': 288, 'nz':  96, 'spinup_time':  30, 'equil_time': 20, 'stats_time':  10},
+    '11': {'Ra': 20000000, 'nh': 576, 'nz': 192, 'spinup_time':  30, 'equil_time': 10, 'stats_time':  10},
 }
+
 
 def identifier(m): return "nh{:d}_nz{:d}_Ra{:d}".format(m.nx, m.nz, m.Ra)
 
@@ -46,8 +47,8 @@ def add_reynolds_number(flow):
 
 def add_nusselt_numbers(flow):
     flow.add_property("1 + w*b/κ", name="Nu_wb")
-    flow.add_property("1 + ε/κ", name="Nu_ε")
-    flow.add_property("χ/κ", name="Nu_χ")
+    flow.add_property("1 + (ε + ε_sgs)/κ", name="Nu_ε")
+    flow.add_property("(χ + χ_sgs)/κ", name="Nu_χ")
 
 logger = logging.getLogger(__name__)
 
@@ -220,7 +221,7 @@ try:
             compute_time = time.time() - log_time
             log_time = time.time()
             logger.info(
-                "i: {:d}, t: {:.2e}, t_wall: {:.0f} s, dt: {:.2e}, max Re: {:.0f}, Nu_wb: {:.2f}, Nu_ε: {:.2f}, Nu_χ: {:.2f}".format(
+                "i: {:d}, t: {:.2e}, t_wall: {:.1f} s, dt: {:.2e}, max Re: {:.0f}, Nu_wb: {:.2f}, Nu_ε: {:.2f}, Nu_χ: {:.2f}".format(
                 model.solver.iteration, model.solver.sim_time, compute_time, dt, equil_stats.max("Re"), 
                 equil_stats.volume_average("Nu_wb"), equil_stats.volume_average("Nu_ε"), equil_stats.volume_average("Nu_χ")))
 

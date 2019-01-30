@@ -8,9 +8,9 @@ from .closures import add_closure_substitutions, add_closure_variables, add_clos
 
 default_substitutions = {
         'ε' : "ν*(ux*ux + uy*uy + uz*uz + vx*vx + vy*vy + vz*vz + wx*wx + wy*wy + wz*wz)",
-    'ε_sgs' : "u*Fx_sgs + v*Fy_sgs + w*Fz_sgs",
+    'ε_sgs' : "-u*Fx_sgs - v*Fy_sgs - w*Fz_sgs",
         'χ' : "κ*(bx*bx + by*by + bz*bz)",
-    'χ_sgs' : "b*Fb_sgs"
+    'χ_sgs' : "-b*Fb_sgs"
 }
 
 class BoussinesqChannelFlow(ChannelFlow):
