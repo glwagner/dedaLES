@@ -9,11 +9,11 @@
 
 # Job
 #SBATCH --partition=sched_mit_hill
-#SBATCH --nodes=2
+#SBATCH --nodes=16
 #SBATCH --ntasks-per-node=16
 #SBATCH --mem-per-cpu=3500
-#SBATCH --time=12:00:00
-#SBATCH --job-name="RBCex"
+#SBATCH --time=1:00:00
+#SBATCH --job-name="FCex"
 
 # Streams
 #SBATCH --output=job_%j.out
@@ -24,4 +24,4 @@
 conda activate dedalus
 
 # Content
-mpiexec python3 rayleigh_benard_example.py >> RBC_example.out
+mpiexec python3 free_convection_example.py >> FC_example8.out

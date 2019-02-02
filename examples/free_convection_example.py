@@ -17,23 +17,19 @@ minute = 60*second
 hour   = 60*minute
 day    = 24*hour
 
-try:
-    if sys.argv[1] is 'debug':
-        debug = True
-except:
-    debug = False
+debug = False
 
 def identifier(model, closure=None): 
     if closure is None: closure_name = 'DNS'
     else:               closure_name = closure.__class__.__name__
     return "freeconvection_nh{:d}_nz{:d}_Q{:.0f}_bfreq{:.0f}_{:s}".format(
-            model.nx, model.nz, -model.Q, 1/sqrt(initial_N2), closure_name)
+            model.nx, model.nz, -model.Q, 1/np.sqrt(initial_N2), closure_name)
 
 # Domain parameters
-nx = ny = 256   # Horizontal resolution
-nz = 128        # Vertical resolution
-Lx = Ly = 128.0 # Domain horizontal extent [m]
-Lz = 150.0      # Domain horizontal extent [m]
+nx = ny = nz = 256   # Horizontal resolution
+Lx = Ly = Lz = 32.0  # Domain extent [m]
+#nz = 128        # Vertical resolution
+#Lz = 32.0       # Domain vertical extent [m]
 
 # Physical parameters
 Q = -75.0  # Cooling rate [W m⁻²]
@@ -41,7 +37,7 @@ initial_T_surface = 20.0 # Deep buoyancy gradient [s⁻²]
 initial_Tz = 1e-2 # Deep buoyancy gradient [s⁻²]
 
 # Physical constants
-a  = 1e-2       # Noise amplitude
+a  = 1.0e-4     # Noise amplitude [m s⁻¹]
 α  = 2.0e-4     # Thermal expansion coefficient [K⁻¹]
 β  = 8.0e-4     # Thermal expansion coefficient [K⁻¹]
 g  = 9.81       # Graviational acceleration [m s⁻²]
@@ -49,17 +45,22 @@ g  = 9.81       # Graviational acceleration [m s⁻²]
 cP = 3993.0     # Specific heat of oceanic water [J kg⁻¹ K⁻¹]
 κ  = 1.43e-7    # Thermal diffusivity [m² s⁻¹]
 ν  = 1.05e-6    # Viscosity [m² s⁻¹]
-dt = 10*second
+dt = 1*second
 
 # Numerical parameters
-CFL_cadence = 10
-stats_cadence = 10
-run_time = 4*hour
+CFL_cadence = 100
+stats_cadence = 100
+analysis_cadence = 10000
+run_time = 2*hour
 
 if debug:
     nx = ny = 16
     nz = 8
     CFL_cadence = np.inf
+    dt = 1e-16
+    run_time = 10*dt
+    stats_cadence = 1
+    analysis_cadence = 1
 
 # Calculated parameters
 surface_flux = Q*α*g / (cP*ρ0*κ) # [s⁻²]
@@ -68,7 +69,7 @@ initial_N2 = g*α*initial_Tz / ρ0
 # Construct model
 closure = None
 model = dedaLES.BoussinesqChannelFlow(Lx=Lx, Ly=Ly, Lz=Lz, nx=nx, ny=ny, nz=nz, ν=ν, κ=κ, closure=closure,
-                                      surface_flux=surface_flux, initial_N2=initial_N2)
+                                      Q=Q, surface_flux=surface_flux, initial_N2=initial_N2)
 
 # Boundary conditions
 model.set_bc("no penetration", "top", "bottom")
@@ -79,13 +80,13 @@ model.set_tracer_gradient_bc("b", "bottom", gradient="initial_N2")
 model.build_solver(timestepper='SBDF3')
 
 # Initial condition
-noise = a * dedaLES.random_noise(model.domain) * model.z * (Lz - model.z) / Lz**2,
-initial_b = α * g * (initial_T + initial_Tz*model.z)
+noise = a * dedaLES.random_noise(model.domain) * model.z * (Lz - model.z) / Lz**2
+initial_b = α * g * (initial_T_surface + initial_Tz*model.z)
 model.set_fields(
     u = noise,
     v = noise,
     w = noise,
-    b = initial_b * (1 + noise)
+    b = initial_b + np.sqrt(initial_N2) * noise
 )
 
 model.stop_at(sim_time=run_time)
@@ -98,12 +99,15 @@ stats = flow_tools.GlobalFlowProperty(model.solver, cadence=stats_cadence)
 stats.add_property("w*b", name="buoyancyflux")
 stats.add_property("ε + ε_sgs", name="epsilon")
 stats.add_property("χ + χ_sgs", name="chi")
-stats.add_property("w**2", name="wsquared")
+stats.add_property("w*w", name="wsquared")
 stats.add_property("sqrt(u*u + v*v + w*w) / ν", name='Re')
 
-
-analysis = model.solver.evaluator.add_file_handler(identifier(model, closure=closure), iter=1000, max_writes=100)
+analysis = model.solver.evaluator.add_file_handler(identifier(model, closure=closure), iter=analysis_cadence, max_writes=100)
 analysis.add_system(model.solver.state, layout='g')
+analysis.add_task("interp(b, y=0)", scales=1, name='b midplane')
+analysis.add_task("interp(u, y=0)", scales=1, name='u midplane')
+analysis.add_task("interp(v, y=0)", scales=1, name='v midplane')
+analysis.add_task("interp(w, y=0)", scales=1, name='w midplane')
 
 # Main loop
 try:
@@ -120,8 +124,8 @@ try:
             log_time = time.time()
 
             logger.info(
-                "i: {:d}, t: {:.1f} hr, twall: {:.1s} s, dt: {:.1f} s, max Re {:.0f}, max w^2: {:.2f}".format(
-                        model.solver.iteration, model.solver.sim_time/hour, log_time, dt, 
+                "i: {:d}, t: {:.1f} hr, twall: {:.1f} s, dt: {:.1f} s, max Re {:.0f}, max w^2: {:.6f}".format(
+                        model.solver.iteration, model.solver.sim_time/hour, compute_time, dt, 
                         stats.max("Re"), stats.max("wsquared")
             ))
 
