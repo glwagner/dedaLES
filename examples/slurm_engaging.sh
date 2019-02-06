@@ -9,10 +9,10 @@
 
 # Job
 #SBATCH --partition=sched_mit_hill
-#SBATCH --nodes=16
+#SBATCH --nodes=8
 #SBATCH --ntasks-per-node=16
 #SBATCH --mem-per-cpu=3500
-#SBATCH --time=1:00:00
+#SBATCH --time=2:00:00
 #SBATCH --job-name="FCex"
 
 # Streams
@@ -24,4 +24,4 @@
 conda activate dedalus
 
 # Content
-mpiexec python3 free_convection_example.py >> FC_example8.out
+mpiexec python3 free_convection_example.py >> FCex.out

@@ -26,13 +26,13 @@ def identifier(model, closure=None):
             model.nx, model.nz, -model.Q, 1/np.sqrt(initial_N2), closure_name)
 
 # Domain parameters
-nx = ny = nz = 256   # Horizontal resolution
+nx = ny = nz = 128   # Horizontal resolution
 Lx = Ly = Lz = 32.0  # Domain extent [m]
 #nz = 128        # Vertical resolution
 #Lz = 32.0       # Domain vertical extent [m]
 
 # Physical parameters
-Q = -75.0  # Cooling rate [W m⁻²]
+Q = -1.0  # Cooling rate [W m⁻²]
 initial_T_surface = 20.0 # Deep buoyancy gradient [s⁻²]
 initial_Tz = 1e-2 # Deep buoyancy gradient [s⁻²]
 
@@ -124,7 +124,7 @@ try:
             log_time = time.time()
 
             logger.info(
-                "i: {:d}, t: {:.1f} hr, twall: {:.1f} s, dt: {:.1f} s, max Re {:.0f}, max w^2: {:.6f}".format(
+                "i: {:d}, t: {:.1f} hr, twall: {:.1f} s, dt: {:.1f} s, max Re {:.0f}, max w^2: {:e}".format(
                         model.solver.iteration, model.solver.sim_time/hour, compute_time, dt, 
                         stats.max("Re"), stats.max("wsquared")
             ))
