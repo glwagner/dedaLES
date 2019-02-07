@@ -22,50 +22,65 @@ debug = False
 def identifier(model, closure=None): 
     if closure is None: closure_name = 'DNS'
     else:               closure_name = closure.__class__.__name__
-    return "freeconvection_nh{:d}_nz{:d}_Q{:.0f}_bfreq{:.0f}_{:s}".format(
+    return "freeconvection_nh{:d}_nz{:d}_Q{:.0f}_Ninv{:.0f}_{:s}".format(
             model.nx, model.nz, -model.Q, 1/np.sqrt(initial_N2), closure_name)
 
-# Domain parameters
-nx = ny = nz = 64   # Horizontal resolution
-Lx = Ly = Lz = 2.0  # Domain extent [m]
+# Input:
+# python3 free_convection.py n L |Q| τ (closure)
+#
+# Args
+# ----
+#       n : resolution
+#       L : domain size
+#     |Q| : absolute value of surface heat flux
+#       τ : buoyancy time-scale (1/N)
+# closure : LES closure name (defaults to DNS if not supplied)
 
-# Physical parameters
-Q = -1.0  # Cooling rate [W m⁻²]
-initial_T_surface = 20.0 # Deep buoyancy gradient [s⁻²]
-initial_Tz = 1e-3 # Deep buoyancy gradient [s⁻²]
+# Domain parameters
+nx = ny = nz = int(sys.argv[1])     # Horizontal resolution
+Lx = Ly = Lz = float(sys.argv[2])   # Domain extent [m]
+Q = -float(sys.argv[3])             # Cooling rate [W m⁻²]
+initial_N = 1/float(sys.argv[4])    # Buoyancy frequency [s⁻¹]
+
+if len(sys.argv) > 5:
+    closure_name = sys.argv[5]
+    closure = getattr(dedaLES, closure_name)(stratified=True)
+else:
+    closure_name = 'DNS'
+    closure = None
 
 # Physical constants
 a  = 1.0e-4     # Noise amplitude [m s⁻¹]
-α  = 2.0e-4     # Thermal expansion coefficient [K⁻¹]
-β  = 8.0e-4     # Thermal expansion coefficient [K⁻¹]
+α  = 2.0e-4     # Thermal expansion coefficient for temperature [m s⁻² C⁻¹]
+β  = 8.0e-4     # Thermal expansion coefficient for salinity [m s⁻² PSU⁻¹]
 g  = 9.81       # Graviational acceleration [m s⁻²]
 ρ0 = 1028.1     # Reference density [kg m⁻³]
 cP = 3993.0     # Specific heat of oceanic water [J kg⁻¹ K⁻¹]
 κ  = 1.43e-7    # Thermal diffusivity [m² s⁻¹]
 ν  = 1.05e-6    # Viscosity [m² s⁻¹]
-dt = 1*second
+
+# Physical parameters
+initial_T_surface = 20.0 # Initial surface temperature [C]
+initial_Tz = initial_N**2 * ρ0 / (g*α) # Deep temperature gradient [C m⁻¹]
+surface_flux = Q*α*g / (cP*ρ0*κ) # [s⁻²]
+initial_N2 = initial_N**2
+
+dt = 0.01 * np.sqrt(-1/surface_flux) # Initial time-step
 
 # Numerical parameters
-CFL_cadence = 10
+CFL_cadence = 100
 stats_cadence = 10
 analysis_cadence = 10
 run_time = 2*hour
 
 if debug:
-    nx = ny = 16
-    nz = 8
+    nx = ny = nz = 8
     CFL_cadence = np.inf
     dt = 1e-16
     run_time = 10*dt
-    stats_cadence = 1
-    analysis_cadence = 1
-
-# Calculated parameters
-surface_flux = Q*α*g / (cP*ρ0*κ) # [s⁻²]
-initial_N2 = g*α*initial_Tz / ρ0
+    stats_cadence = analysis_cadence = 1
 
 # Construct model
-closure = None
 model = dedaLES.BoussinesqChannelFlow(Lx=Lx, Ly=Ly, Lz=Lz, nx=nx, ny=ny, nz=nz, ν=ν, κ=κ, closure=closure,
                                       Q=Q, surface_flux=surface_flux, initial_N2=initial_N2)
 
