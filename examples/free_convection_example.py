@@ -17,22 +17,19 @@ minute = 60*second
 hour   = 60*minute
 day    = 24*hour
 
-debug = False
+debug = True
 
 def identifier(model, closure=None): 
     if closure is None: closure_name = 'DNS'
     else:               closure_name = closure.__class__.__name__
-    return "freeconvection_nh{:d}_nz{:d}_Q{:.0f}_bfreq{:.0f}_{:s}".format(
-            model.nx, model.nz, -model.Q, 1/np.sqrt(initial_N2), closure_name)
+    return "freeconvection_nh{:d}_nz{:d}_10Q{:.0f}_Ninv{:.0f}_{:s}".format(
+            model.nx, model.nz, -model.Q*10, 1/np.sqrt(initial_N2), closure_name)
 
-# Domain parameters
+# Main parameters
 nx = ny = nz = 64   # Horizontal resolution
-Lx = Ly = Lz = 2.0  # Domain extent [m]
-
-# Physical parameters
-Q = -1.0  # Cooling rate [W m⁻²]
-initial_T_surface = 20.0 # Deep buoyancy gradient [s⁻²]
-initial_Tz = 1e-3 # Deep buoyancy gradient [s⁻²]
+Lx = Ly = Lz = 1.0  # Domain extent [m]
+initial_N = 1/40000.0 # Initial buoyancy frequency [s⁻¹]
+Q = -0.1 # Cooling rate [W m⁻²]
 
 # Physical constants
 a  = 1.0e-4     # Noise amplitude [m s⁻¹]
@@ -43,26 +40,27 @@ g  = 9.81       # Graviational acceleration [m s⁻²]
 cP = 3993.0     # Specific heat of oceanic water [J kg⁻¹ K⁻¹]
 κ  = 1.43e-7    # Thermal diffusivity [m² s⁻¹]
 ν  = 1.05e-6    # Viscosity [m² s⁻¹]
-dt = 1*second
+
+# Physical parameters
+initial_T_surface = 20.0 # Deep buoyancy gradient [s⁻²]
+initial_N2 = initial_N**2 # Initial buoyancy gradient [s⁻²]
+initial_Tz = initial_N2 * ρ0 / (g*α) # Deep temperature gradient [C m⁻¹]
+surface_flux = Q*α*g / (cP*ρ0*κ) # [s⁻²]
+dt = 0.01 / np.sqrt(-surface_flux)
 
 # Numerical parameters
-CFL_cadence = 10
+CFL_cadence = 100
 stats_cadence = 10
 analysis_cadence = 10
 run_time = 2*hour
+max_writes = 1000
 
 if debug:
-    nx = ny = 16
-    nz = 8
+    nx = ny = nz = 8
     CFL_cadence = np.inf
     dt = 1e-16
     run_time = 10*dt
-    stats_cadence = 1
-    analysis_cadence = 1
-
-# Calculated parameters
-surface_flux = Q*α*g / (cP*ρ0*κ) # [s⁻²]
-initial_N2 = g*α*initial_Tz / ρ0
+    stats_cadence = analysis_cadence = 1
 
 # Construct model
 closure = None
@@ -100,7 +98,7 @@ stats.add_property("χ + χ_sgs", name="chi")
 stats.add_property("w*w", name="wsquared")
 stats.add_property("sqrt(u*u + v*v + w*w) / ν", name='Re')
 
-analysis = model.solver.evaluator.add_file_handler(identifier(model, closure=closure), iter=analysis_cadence, max_writes=100)
+analysis = model.solver.evaluator.add_file_handler(identifier(model, closure=closure), iter=analysis_cadence, max_writes=max_writes)
 analysis.add_system(model.solver.state, layout='g')
 analysis.add_task("interp(b, y=0)", scales=1, name='b midplane')
 analysis.add_task("interp(u, y=0)", scales=1, name='u midplane')

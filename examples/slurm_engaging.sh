@@ -25,6 +25,7 @@
 conda activate dedalus
 
 # Content
-#mpiexec python3 free_convection_example.py >> FCex.out
-analysis="freeconvection_nh64_nz64_Q1_bfreq22891_DNS"
+mpiexec python3 free_convection_example.py >> FCex.out
+
+analysis="freeconvection_nh64_nz64_Q1_Ninv40000_DNS"
 mpiexec python3 merge.py $analysis
