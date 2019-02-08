@@ -17,7 +17,7 @@ minute = 60*second
 hour   = 60*minute
 day    = 24*hour
 
-debug = True
+debug = False
 
 def identifier(model, closure=None): 
     if closure is None: closure_name = 'DNS'
@@ -26,10 +26,10 @@ def identifier(model, closure=None):
             model.nx, model.nz, -model.Q*10, 1/np.sqrt(initial_N2), closure_name)
 
 # Main parameters
-nx = ny = nz = 64   # Horizontal resolution
+nx = ny = nz = 128  # Horizontal resolution
 Lx = Ly = Lz = 1.0  # Domain extent [m]
-initial_N = 1/40000.0 # Initial buoyancy frequency [s⁻¹]
-Q = -0.1 # Cooling rate [W m⁻²]
+initial_N = 1/10000.0 # Initial buoyancy frequency [s⁻¹]
+Q = -1.0 # Cooling rate [W m⁻²]
 
 # Physical constants
 a  = 1.0e-4     # Noise amplitude [m s⁻¹]
@@ -49,9 +49,9 @@ surface_flux = Q*α*g / (cP*ρ0*κ) # [s⁻²]
 dt = 0.01 / np.sqrt(-surface_flux)
 
 # Numerical parameters
-CFL_cadence = 100
-stats_cadence = 10
-analysis_cadence = 10
+CFL_cadence = 10
+stats_cadence = 100
+analysis_cadence = 100
 run_time = 2*hour
 max_writes = 1000
 
@@ -61,6 +61,25 @@ if debug:
     dt = 1e-16
     run_time = 10*dt
     stats_cadence = analysis_cadence = 1
+
+logger.info("""\n\n
+    *** Convection into a linearly stratified fluid ***
+
+              Parameters
+              ----------
+
+                nx : {}
+                ny : {}
+                nz : {}
+                Lx : {}
+                Ly : {}
+                Lz : {}
+                 Q : {}
+               1/N : {}
+        initial dt : {}
+          run time : {}
+
+    \n\n""".format(nx, ny, nz, Lx, Ly, Lz, Q, 1/initial_N), dt, run_time)
 
 # Construct model
 closure = None
@@ -76,13 +95,13 @@ model.set_tracer_gradient_bc("b", "bottom", gradient="initial_N2")
 model.build_solver(timestepper='SBDF3')
 
 # Initial condition
-noise = a * dedaLES.random_noise(model.domain) * model.z * (Lz - model.z) / Lz**2
+noise = a * dedaLES.random_noise(model.domain) * model.z / Lz #* (Lz - model.z) / Lz**2
 initial_b = α * g * (initial_T_surface + initial_Tz*model.z)
 model.set_fields(
     u = noise,
     v = noise,
-    w = noise,
-    b = initial_b + np.sqrt(initial_N2) * noise
+    b = initial_b #+ np.sqrt(initial_N2) * noise
+    #w = noise,
 )
 
 model.stop_at(sim_time=run_time)
