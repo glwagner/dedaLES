@@ -1,7 +1,7 @@
 """
 This script reproduces results from
 
-Robert M Kerr, "Rayleigh number scaling in numerical convection", 
+Robert M Kerr, "Rayleigh number scaling in numerical convection",
 Journal of Fluid Mechanics (1996)
 """
 
@@ -24,7 +24,7 @@ resolutions = {
     2: {'nh':  96, 'nz': 48},
     3: {'nh': 128, 'nz': 48},
     4: {'nh': 192, 'nz': 64},
-    5: {'nh': 288, 'nz': 96} 
+    5: {'nh': 288, 'nz': 96}
 }
 
 kerr_parameters = {
@@ -61,10 +61,10 @@ kerr_parameters = {
 # 2000000: { **resolutions[5],
 #            't0' : 24.0,
 #            'tf' : 140.0 }
-#} 
+#}
 #
-    
-# Re = U*L/ν = 
+
+# Re = U*L/ν =
 # Rayleigh number. Ra = Δb*L^3 / ν*κ = Δb*L^3*Pr / ν^2
 Ra = 2000
 
@@ -82,13 +82,13 @@ a  = 1e-3                   # Noise amplitude for initial condition
 
 # Calculated parameters
 ν = np.sqrt(Δb*Pr*Lz**3/Ra) # Viscosity. ν = sqrt(Pr/Ra) with Lz=Δb=1
-κ = ν/Pr                      # Thermal diffusivity 
+κ = ν/Pr                      # Thermal diffusivity
 
 # Construct model
 #closure = dedaLES.AnisotropicMinimumDissipation()
 #closure = dedaLES.ConstantSmagorinsky()
 closure = None
-model = dedaLES.BoussinesqChannelFlow(Lx=Lx, Ly=Ly, Lz=Lz, nx=nx, ny=ny, nz=nz, 
+model = dedaLES.BoussinesqChannelFlow(Lx=Lx, Ly=Ly, Lz=Lz, nx=nx, ny=ny, nz=nz,
                                       ν=ν, κ=κ, Δb=Δb, closure=closure, nu=ν,V=Lx*Ly*Lz)
 
 model.set_bc("no penetration", "top", "bottom")

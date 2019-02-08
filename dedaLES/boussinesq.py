@@ -19,7 +19,7 @@ class BoussinesqChannelFlow(ChannelFlow):
 
     Args
     ----
-        nx : (int) 
+        nx : (int)
             Grid resolution in :math:`x`
 
         ny : (int)
@@ -34,32 +34,32 @@ class BoussinesqChannelFlow(ChannelFlow):
         Ly : (float)
             Domain extent in :math:`y`
 
-        Lz : (float) 
-            Domain extent in :math:`z` 
+        Lz : (float)
+            Domain extent in :math:`z`
 
         f : (float)
-            Coriolis parameter 
+            Coriolis parameter
 
         ν : (float)
-            'Molecular' viscosity 
+            'Molecular' viscosity
 
         κ : (float)
-            'Molecular' diffusivity for buoyancy 
+            'Molecular' diffusivity for buoyancy
 
         Nsq : (float)
-            Background buoyancy gradient 
+            Background buoyancy gradient
 
         closure : (None or closure.EddyViscosityClosure)
-            Turbulent closure for Large Eddy Simulation 
+            Turbulent closure for Large Eddy Simulation
 
         xleft : (float)
-            Domain x-origin 
+            Domain x-origin
 
         yleft : (float)
-            Domain y-origin 
+            Domain y-origin
 
         zbottom : (float)
-            Domain z-origin 
+            Domain z-origin
 
         **params : (any)
             Additional parameters to be added to the dedalus problem.
@@ -68,19 +68,19 @@ class BoussinesqChannelFlow(ChannelFlow):
         nx = 32,
         ny = 32,
         nz = 32,
-        Lx = 1.0,       
-        Ly = 1.0,       
-        Lz = 1.0,       
-        f = 0.0,       
-        κ = 1.43e-7,   
-        ν = 1.05e-6,   
-        Nsq = 0.0,       
-        closure = None,  
-        xleft = None,  
-        yleft = None,  
-        zbottom = None,  
+        Lx = 1.0,
+        Ly = 1.0,
+        Lz = 1.0,
+        f = 0.0,
+        κ = 1.43e-7,
+        ν = 1.05e-6,
+        Nsq = 0.0,
+        closure = None,
+        xleft = None,
+        yleft = None,
+        zbottom = None,
         substitutions = default_substitutions,
-        **params         
+        **params
         ):
 
         ChannelFlow.__init__(self, nx, ny, nz, Lx, Ly, Lz, xleft, yleft, zbottom)
@@ -90,7 +90,7 @@ class BoussinesqChannelFlow(ChannelFlow):
         self.ybasis = ybasis = de.Fourier('y', ny, interval=self.ylimits, dealias=3/2)
         self.zbasis = zbasis = de.Chebyshev('z', nz, interval=self.zlimits, dealias=3/2)
         self.domain = domain = de.Domain([xbasis, ybasis, zbasis], grid_dtype=np.float64)
-        
+
         variables = ['p', 'b', 'u', 'v', 'w', 'bz', 'uz', 'vz', 'wz']
         add_closure_variables(variables, closure)
 
@@ -154,5 +154,5 @@ class BoussinesqChannelFlow(ChannelFlow):
         """Print messages."""
         logger.info('Iteration: %i, Time: %e, dt: %e' %(self.solver.iteration, self.solver.sim_time, dt))
 
-        for name, task in self.log_tasks.items(): 
+        for name, task in self.log_tasks.items():
             logger.info("{} = {}".format(name, task(self)))

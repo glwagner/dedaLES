@@ -5,8 +5,8 @@ Classes and functions for implementing turbulence closures
 in dedaLES.
 
 Turbulence closures are generalized to consist of 'nonlinear' and
-'linear' momentum stress and tracer flux divergences. 
-For u-momentum, for example, the nonlinear stress divergence is 
+'linear' momentum stress and tracer flux divergences.
+For u-momentum, for example, the nonlinear stress divergence is
 denoted Nu_sgs, while the linear stress divergence is denoted Lu_sgs.
 For a tracer c, the nonlinear flux divergence is Nc_sgs, and the linear
 flux divergence is Lc_sgs.
@@ -56,7 +56,7 @@ class EddyViscosityClosure():
     """
     Generic LES closure based on an eddy viscosity and diffusivity.
 
-    The nonlinear, isotropic eddy viscosity is denoted ν_sgs. The constant eddy 
+    The nonlinear, isotropic eddy viscosity is denoted ν_sgs. The constant eddy
     viscosity tensor is denoted νij_sgs_const.
     """
     def __init__(self):
@@ -75,13 +75,13 @@ class EddyViscosityClosure():
         """
         Defines the strain-rate tensor `Sij` in `problem`.
 
-        For the the indicies of the strain rate tensor, 
+        For the the indicies of the strain rate tensor,
         we use the shorthand x=1, y=2, z=3 for clarity.
 
         Args
         ----
         problem : de.Problem
-            dedalus problem to which the substitiutions are added        
+            dedalus problem to which the substitiutions are added
 
         u : str
             Name of the flow field in the x-direction
@@ -125,7 +125,7 @@ class EddyViscosityClosure():
         problem.substitutions['Lu_sgs'] = "dx(τxx_linear) + dy(τyx_linear) + dz(τzx_linear)"
         problem.substitutions['Lv_sgs'] = "dx(τxy_linear) + dy(τyy_linear) + dz(τzy_linear)"
         problem.substitutions['Lw_sgs'] = "dx(τxz_linear) + dy(τyz_linear) + dz(τzz_linear)"
-        
+
     def add_substitutions_subgrid_flux(self, problem, c):
         """Defines the subgrid tracer flux for `qcx` for the tracer `c` and
         the subgrid flux divergence `Nc_sgs` in `problem`.
@@ -138,7 +138,7 @@ class EddyViscosityClosure():
         # Diffusivity for c
         κ_sgs = f"κ{c}_sgs"
 
-        problem.substitutions[qx] = f"- {κ_sgs} * dx({c})" 
+        problem.substitutions[qx] = f"- {κ_sgs} * dx({c})"
         problem.substitutions[qy] = f"- {κ_sgs} * dy({c})"
         problem.substitutions[qz] = f"- {κ_sgs} * dz({c})"
 
@@ -151,7 +151,7 @@ class EddyViscosityClosure():
             κix_sgs_const = f"κ{i}x_{c}_sgs_const"
             κiy_sgs_const = f"κ{i}y_{c}_sgs_const"
             κiz_sgs_const = f"κ{i}z_{c}_sgs_const"
-            problem.substitutions[qi_linear] = f"- {κix_sgs_const} * dx({c}) - {κiy_sgs_const} * dy({c}) - {κiz_sgs_const} * dz({c})" 
+            problem.substitutions[qi_linear] = f"- {κix_sgs_const} * dx({c}) - {κiy_sgs_const} * dy({c}) - {κiz_sgs_const} * dz({c})"
 
         qx_linear = f"qx_{c}_linear"
         qy_linear = f"qy_{c}_linear"
@@ -243,7 +243,7 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
         self.stratified = stratified
 
     def add_substitutions(self, problem, u='u', v='v', w='w', b='b', tracers=[], **kwargs):
-        """Add substitutions associated with the Anisotropic 
+        """Add substitutions associated with the Anisotropic
         Minimum Dissipation model to the `problem`.
 
         Args
@@ -301,8 +301,8 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
         )
 
         problem.substitutions['uik_ujk_Sij'] = (
-            f"Δx**2 * ({u}x*{u}x*Sxx + {v}x*{v}x*Syy + {w}x*{w}x*Szz + 2*{u}x*{v}x*Sxy + 2*{u}x*{w}x*Sxz + 2*{v}x*{w}x*Syz) + " + 
-            f"Δy**2 * ({u}y*{u}y*Sxx + {v}y*{v}y*Syy + {w}y*{w}y*Szz + 2*{u}y*{v}y*Sxy + 2*{u}y*{w}y*Sxz + 2*{v}y*{w}y*Syz) + " + 
+            f"Δx**2 * ({u}x*{u}x*Sxx + {v}x*{v}x*Syy + {w}x*{w}x*Szz + 2*{u}x*{v}x*Sxy + 2*{u}x*{w}x*Sxz + 2*{v}x*{w}x*Syz) + " +
+            f"Δy**2 * ({u}y*{u}y*Sxx + {v}y*{v}y*Syy + {w}y*{w}y*Szz + 2*{u}y*{v}y*Sxy + 2*{u}y*{w}y*Sxz + 2*{v}y*{w}y*Syz) + " +
             f"Δz**2 * ({u}z*{u}z*Sxx + {v}z*{v}z*Syy + {w}z*{w}z*Szz + 2*{u}z*{v}z*Sxy + 2*{u}z*{w}z*Sxz + 2*{v}z*{w}z*Syz)"
         )
 
@@ -330,11 +330,11 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
             problem.substitutions[Dc_dot_uy] = f"{u}y*{c}x + {v}y*{c}y + {w}y*{c}z"
             problem.substitutions[Dc_dot_uz] = f"{u}z*{c}x + {v}z*{c}y + {w}z*{c}z"
 
-            # uik_ck_ci = Δₖ² ∂ₖuᵢ ∂ₖc ∂ᵢc = Δₖ² ∂ₖc (∇c • ∂ₖu) 
+            # uik_ck_ci = Δₖ² ∂ₖuᵢ ∂ₖc ∂ᵢc = Δₖ² ∂ₖc (∇c • ∂ₖu)
             uik_ck_ci = f"uik_{c}k_{c}i"
             problem.substitutions[uik_ck_ci] = (
-                   f"Δx**2 * {c}x * {Dc_dot_ux}" + 
-                f" + Δy**2 * {c}y * {Dc_dot_uy}" + 
+                   f"Δx**2 * {c}x * {Dc_dot_ux}" +
+                f" + Δy**2 * {c}y * {Dc_dot_uy}" +
                 f" + Δz**2 * {c}z * {Dc_dot_uz}")
 
             # κ_sgs = -C^2 Δₖ² ∂ₖuᵢ ∂ₖc ∂ᵢc / |∇c|²

@@ -49,7 +49,7 @@ b_noise = a*b_init          # Noise amplitude for initial buoyancy condition
 closure = dedaLES.ConstantSmagorinsky()
 model = dedaLES.BoussinesqChannelFlow(Lx=Lx, Ly=Ly, Lz=Lz, nx=nx, ny=ny, nz=nz, ν=ν, κ=κ, zbottom=-Lz
                                       bz_deep=bz_deep, bz_surf=bz_surf, tb=day/2, closure=closure, H=Lz)
-    
+
 # Boundary conditions
 model.set_bc("no penetration", "top", "bottom")
 model.set_bc("free slip", "top", "bottom")
@@ -59,7 +59,7 @@ model.set_tracer_gradient_bc("b", "bottom", gradient="bz_deep")
 model.build_solver()
 
 # Initial condition
-def smoothstep(z, d): 
+def smoothstep(z, d):
     return 0.5*(1 + np.tanh(z/d))
 
 b0 = bz_deep * (model.z + h0) * smoothstep(-model.z-h0, d)
@@ -86,7 +86,7 @@ try:
     while model.solver.ok:
         model.solver.step(dt)
 
-        if model.time_to_log(100): 
+        if model.time_to_log(100):
             logger.info('Iter: {}, Time: {:.2f}, dt: {:.1f}'.format(
                         model.solver.iteration, model.solver.sim_time/hour, dt))
             logger.info("     Max domain Re = {:.6f}".format(flow.max("Re_domain")))
@@ -104,7 +104,7 @@ finally:
     logger.info('Sim end time: %f' %model.solver.sim_time)
     logger.info('Run time: %.2f sec' %(end_run_time-start_run_time))
     logger.info('Run time: %f cpu-hr' %((end_run_time-start_run_time) / hour * model.domain.dist.comm_cart.size))
-        
+
 
 
 

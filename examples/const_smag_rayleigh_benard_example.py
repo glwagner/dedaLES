@@ -22,19 +22,19 @@ Lz = 1.0        # Domain vertical extent
 # Parameters
 Pr = 1.0        # Prandtl number
 f  = 0.0        # Coriolis parameter
-κ  = 1.0        # Thermal diffusivity 
+κ  = 1.0        # Thermal diffusivity
 ε  = 0.8        # Perturbation above criticality
 a  = 1e-3       # Noise amplitude for initial condition
 
 # Constants
 Ra_critical = 1707.762
 Ra = Ra_critical + ε
-ν  = Pr*κ                   # Viscosity 
+ν  = Pr*κ                   # Viscosity
 Bz = -Ra*Pr                 # Unstable buoyancy gradient
 
 # Construct model
-model = dedaLES.BoussinesqChannelFlow(Lx=Lx, Ly=Ly, Lz=Lz, 
-                                      nx=nx, ny=ny, nz=nz, 
+model = dedaLES.BoussinesqChannelFlow(Lx=Lx, Ly=Ly, Lz=Lz,
+                                      nx=nx, ny=ny, nz=nz,
                                       ν=ν, κ=κ, B0=Bz*Lz, closure=dedaLES.ConstantSmagorinsky())
 
 model.set_bc("nopenetration", "top", "bottom")
@@ -59,7 +59,7 @@ model.solver.stop_wall_time = 60 * 60.
 model.solver.stop_iteration = np.inf
 
 # Analysis
-snap = model.solver.evaluator.add_file_handler('snapshots', sim_dt=0.2, 
+snap = model.solver.evaluator.add_file_handler('snapshots', sim_dt=0.2,
                                                max_writes=10)
 snap.add_task("interp(b, z=0)", scales=1, name='b midplane')
 snap.add_task("interp(u, z=0)", scales=1, name='u midplane')
@@ -67,7 +67,7 @@ snap.add_task("interp(v, z=0)", scales=1, name='v midplane')
 snap.add_task("interp(w, z=0)", scales=1, name='w midplane')
 
 # CFL
-CFL = flow_tools.CFL(model.solver, initial_dt=1e-4, cadence=5, 
+CFL = flow_tools.CFL(model.solver, initial_dt=1e-4, cadence=5,
                      safety=1.5, max_change=1.5, min_change=0.5, max_dt=0.05)
 CFL.add_velocities(('u', 'v', 'w'))
 

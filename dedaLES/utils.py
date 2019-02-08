@@ -43,7 +43,7 @@ def add_first_derivative_substitutions(problem, variables, dims):
 
     is equivalent to
 
-    >> problem.substitutions['ux'] = "dx(u)"  
+    >> problem.substitutions['ux'] = "dx(u)"
     """
     if type(dims) is str: dims = [dims]
     if type(variables) is str: variables = [variables]
