@@ -1,6 +1,6 @@
 #!/bin/bash
 ### Job Name
-#PBS -N FC2
+#PBS -N FC0
 ### Project code
 #PBS -A UMIT0023
 #PBS -l walltime=02:00:00
@@ -8,7 +8,7 @@
 ### Merge output and error files
 #PBS -j oe
 ### Select 2 nodes with 36 CPUs each for a total of 72 MPI processes
-#PBS -l select=2:ncpus=36:mpiprocs=36:mem=109GB
+#PBS -l select=1:ncpus=36:mpiprocs=36:mem=109GB
 ### Send email on abort, begin and end
 #PBS -m abe
 ### Specify mail recipient
@@ -32,10 +32,11 @@ module load intel/17.0.1
 module load openmpi/3.0.1
 
 cp $examples/$scriptname $TMPDIR/$scriptname
+cp $examples/merge.py $TMPDIR/
 cd $TMPDIR
 
 ### Run the executable
-mpiexec python3 $scriptname >> $examples/FC2.out
+mpiexec python3 $scriptname >> $examples/FC0.out
 
-analysis="freeconvection_nh128_nz128_10Q10_Ninv10000_DNS"
-mpiexec python3 merge.py $analysis
+### analysis="freeconvection_nh64_nz64_10Q1_Ninv20000_DNS"
+### mpiexec python3 merge.py $analysis

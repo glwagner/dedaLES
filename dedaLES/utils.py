@@ -1,6 +1,11 @@
 import numpy as np
 from mpi4py import MPI
 
+def grid_stats(model, dim):
+    Δmin = np.min(model.problem.domain.grid_spacing(dim))
+    Δmax = np.max(model.problem.domain.grid_spacing(dim))
+    return Δmin, Δmax
+
 def random_noise(domain, amplitude=1, seed=23):
     rand = np.random.RandomState(seed=seed)
     gshape = domain.dist.grid_layout.global_shape(scales=1)
