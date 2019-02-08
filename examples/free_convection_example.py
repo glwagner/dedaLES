@@ -17,7 +17,10 @@ minute = 60*second
 hour   = 60*minute
 day    = 24*hour
 
-debug = False
+if len(sys.argv) > 1:
+    debug = True
+else:
+    debug = False
 
 def identifier(model, closure=None): 
     if closure is None: closure_name = 'DNS'
@@ -32,7 +35,7 @@ initial_N = 1/10000.0 # Initial buoyancy frequency [s⁻¹]
 Q = -1.0 # Cooling rate [W m⁻²]
 
 # Physical constants
-a  = 1.0e-4     # Noise amplitude [m s⁻¹]
+a  = 1.0e-3     # Noise amplitude [m s⁻¹]
 α  = 2.0e-4     # Thermal expansion coefficient [K⁻¹]
 β  = 8.0e-4     # Thermal expansion coefficient [K⁻¹]
 g  = 9.81       # Graviational acceleration [m s⁻²]
@@ -62,7 +65,7 @@ if debug:
     run_time = 10*dt
     stats_cadence = analysis_cadence = 1
 
-logger.info("""\n\n
+logger.info("""\n
     *** Convection into a linearly stratified fluid ***
 
               Parameters
@@ -79,7 +82,7 @@ logger.info("""\n\n
         initial dt : {}
           run time : {}
 
-    \n\n""".format(nx, ny, nz, Lx, Ly, Lz, Q, 1/initial_N), dt, run_time)
+    """.format(nx, ny, nz, Lx, Ly, Lz, Q, 1/initial_N, dt, run_time))
 
 # Construct model
 closure = None
