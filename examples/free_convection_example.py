@@ -79,8 +79,8 @@ closure = None
 model = dedaLES.BoussinesqChannelFlow(Lx=Lx, Ly=Ly, Lz=Lz, nx=nx, ny=ny, nz=nz, ν=ν, κ=κ, closure=closure,
                                       surface_flux=surface_flux, surface_bz=surface_bz, initial_N2=initial_N2)
 
-Δx_min, Δx_max = dedaLES.grid_stats(model, 0)
-Δy_min, Δy_max = dedaLES.grid_stats(model, 1)
+Δx = Lx/nx
+Δy = Ly/ny
 Δz_min, Δz_max = dedaLES.grid_stats(model, 2)
 
 logger.info("""\n
@@ -106,13 +106,13 @@ logger.info("""\n
             turbulent w-scale : {:.2e} m s⁻¹
            erosion time-scale : {:.2e} s
              Kolmogorov scale : {:.2e} m
-           x-spacing min, max : {:.2e} m, {:.2e} m 
-           y-spacing min, max : {:.2e} m, {:.2e} m
+                    x-spacing : {:.2e} m 
+                    y-spacing : {:.2e} m
            z-spacing min, max : {:.2e} m, {:.2e} m
 
     """.format(Q, surface_flux, 1/initial_N, initial_dt, run_time, 
                Lx, Ly, Lz, nx, ny, nz,
-               w_turb, t_erosion, l_kolmo, Δx_min, Δx_max, Δy_min, Δy_max, Δz_min, Δz_max)
+               w_turb, t_erosion, l_kolmo, Δx, Δy, Δz_min, Δz_max)
 )
 
 # Boundary conditions
