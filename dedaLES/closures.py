@@ -108,49 +108,41 @@ class EddyViscosityClosure():
         """Defines the subgrid stress tensor `τij` and subgrid stress
         divergence `(Nu_sgs, Nv_sgs, Nw_sgs)` in `problem`.
         """
-        # Subgrid stress proportional to eddy viscosity
-        for ij in tensor_components_3d:
-            problem.substitutions[f'τ{ij}'] = f"2 * ν_sgs * S{ij}"
-
-        # Nonlinear subgrid momentum fluxes
-        problem.substitutions['Nu_sgs'] = "dx(τxx) + dy(τyx) + dz(τzx)"
-        problem.substitutions['Nv_sgs'] = "dx(τxy) + dy(τyy) + dz(τzy)"
-        problem.substitutions['Nw_sgs'] = "dx(τxz) + dy(τyz) + dz(τzz)"
+        # Add viscosity_split parameter
+        problem.parameters['ν_split'] = getattr(self, 'ν_split', 0)
 
         # Linear terms
         for ij in tensor_components_3d:
-            problem.substitutions[f'τ{ij}_linear'] = f"2 * ν{ij}_sgs_const * S{ij}"
+            problem.substitutions[f'τ{ij}_linear'] = f"2 * (ν{ij}_sgs_const + ν_split) * S{ij}"
 
         # Linear subgrid momentum fluxes
         problem.substitutions['Lu_sgs'] = "dx(τxx_linear) + dy(τyx_linear) + dz(τzx_linear)"
         problem.substitutions['Lv_sgs'] = "dx(τxy_linear) + dy(τyy_linear) + dz(τzy_linear)"
         problem.substitutions['Lw_sgs'] = "dx(τxz_linear) + dy(τyz_linear) + dz(τzz_linear)"
 
+        # Subgrid stress proportional to eddy viscosity
+        for ij in tensor_components_3d:
+            problem.substitutions[f'τ{ij}'] = f"2 * (ν_sgs - ν_split) * S{ij}" # this will fail if Sij involves non-constant terms.
+
+        # Nonlinear subgrid momentum fluxes
+        problem.substitutions['Nu_sgs'] = "dx(τxx) + dy(τyx) + dz(τzx)"
+        problem.substitutions['Nv_sgs'] = "dx(τxy) + dy(τyy) + dz(τzy)"
+        problem.substitutions['Nw_sgs'] = "dx(τxz) + dy(τyz) + dz(τzz)"
+
+
     def add_substitutions_subgrid_flux(self, problem, c):
         """Defines the subgrid tracer flux for `qcx` for the tracer `c` and
         the subgrid flux divergence `Nc_sgs` in `problem`.
         """
-        # Subgrid buoyancy fluxes
-        qx = f"q{c}x"
-        qy = f"q{c}y"
-        qz = f"q{c}z"
-
-        # Diffusivity for c
-        κ_sgs = f"κ{c}_sgs"
-
-        problem.substitutions[qx] = f"- {κ_sgs} * dx({c})"
-        problem.substitutions[qy] = f"- {κ_sgs} * dy({c})"
-        problem.substitutions[qz] = f"- {κ_sgs} * dz({c})"
-
-        Nc_sgs = f"N{c}_sgs"
-        problem.substitutions[Nc_sgs] = f"- dx({qx}) - dy({qy}) - dz({qz})"
+        # Add diffusivity splitting parameter
+        problem.parameters['κ_split'] = getattr(self, 'κ_split', 0)
 
         # Linear subgrid buoyancy fluxes
         for i in ['x', 'y', 'z']:
             qi_linear = f"q{i}_{c}_linear"
-            κix_sgs_const = f"κ{i}x_{c}_sgs_const"
-            κiy_sgs_const = f"κ{i}y_{c}_sgs_const"
-            κiz_sgs_const = f"κ{i}z_{c}_sgs_const"
+            κix_sgs_const = f"κ{i}x_{c}_sgs_const + κ_split"
+            κiy_sgs_const = f"κ{i}y_{c}_sgs_const + κ_split"
+            κiz_sgs_const = f"κ{i}z_{c}_sgs_const + κ_split"
             problem.substitutions[qi_linear] = f"- {κix_sgs_const} * dx({c}) - {κiy_sgs_const} * dy({c}) - {κiz_sgs_const} * dz({c})"
 
         qx_linear = f"qx_{c}_linear"
@@ -159,6 +151,23 @@ class EddyViscosityClosure():
         Lc_sgs = f"L{c}_sgs"
         problem.substitutions[Lc_sgs] = f"- dx({qx_linear}) - dy({qy_linear}) - dz({qz_linear})"
 
+
+        # Subgrid buoyancy fluxes
+        qx = f"q{c}x"
+        qy = f"q{c}y"
+        qz = f"q{c}z"
+
+        # Diffusivity for c
+        κ_sgs = f"κ{c}_sgs - κ_split"
+
+        problem.substitutions[qx] = f"- {κ_sgs} * dx({c})"
+        problem.substitutions[qy] = f"- {κ_sgs} * dy({c})"
+        problem.substitutions[qz] = f"- {κ_sgs} * dz({c})"
+
+        Nc_sgs = f"N{c}_sgs"
+        problem.substitutions[Nc_sgs] = f"- dx({qx}) - dy({qy}) - dz({qz})"
+
+        
     def add_closure_substitutions(self):
         pass
 
@@ -190,10 +199,12 @@ class ConstantSmagorinsky(EddyViscosityClosure):
         Δx[i] = Dx * 2 * Δx[i] = Dx * (x[i+1] - x[i-1])
 
     """
-    def __init__(self, Δ_const=0, C=0.17, Sc=1):
+    def __init__(self, Δ_const=0, C=0.17, Sc=1, ν_split=0):
         self.Δ_const = Δ_const
         self.C = C
         self.Sc = Sc
+        self.ν_split = ν_split
+        self.κ_split = ν_split / Sc
 
     def add_substitutions(self, problem, tracers=[], u='u', v='v', w='w', **kwargs):
         self.substitute_zero_constant_viscosity(problem)
@@ -238,9 +249,11 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
     stratified : bool
         Set to 'True' to use the stratified version of AMD
     """
-    def __init__(self, C=1/12, stratified=False):
+    def __init__(self, C=1/12, stratified=False, ν_split=0, κ_split=0):
         self.C = C
         self.stratified = stratified
+        self.ν_split = ν_split
+        self.κ_split = κ_split
 
     def add_substitutions(self, problem, u='u', v='v', w='w', b='b', tracers=[], **kwargs):
         """Add substitutions associated with the Anisotropic
