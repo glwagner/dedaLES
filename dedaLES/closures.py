@@ -180,11 +180,17 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
 
     stratified : bool
         Set to 'True' to use the stratified version of AMD
+
+    quasi_strain : float
+        A 'regularization' parameter that prevents the AMD eddy viscosity from being NaN.
+        Only use this with trivial initial condition that lead to an AMD eddy viscosity of ν_sgs = 0/0.
+        quasi_strain has units of strain, and should be much smaller than resolved strain in non-quiescent 
+        regions of the flow.
     """
-    def __init__(self, C=1/12, stratified=False, reg=0):
+    def __init__(self, C=1/12, stratified=False, quasi_strain=0):
         self.C = C
-        self.reg = reg #regularization parameter
         self.stratified = stratified
+        self.quasi_strain = quasi_strain # quasi-strain regularization parameter for AMD
 
     def add_substitutions(self, problem, u='u', v='v', w='w', b='b', tracers=[], **kwargs):
         """Add substitutions associated with the Anisotropic 
@@ -227,7 +233,7 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
         problem.parameters['Δy'] = self.Δy
         problem.parameters['Δz'] = self.Δz
         problem.parameters['C_poin'] = self.C
-        problem.parameters['reg'] = self.reg
+        problem.parameters['quasi_strain_sq'] = self.quasi_strain**2
 
         # Add subgrid substitutions to problem
         self.add_substitutions_strain_rate_tensor(problem, u=u, v=v, w=w)
@@ -254,7 +260,7 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
         else:
             problem.substitutions['wk_bk'] = "0"
 
-        problem.substitutions['ν_sgs'] = "zero_max(C_poin * (wk_bk - uik_ujk_Sij) / (tr_uij + reg))"
+        problem.substitutions['ν_sgs'] = "zero_max(C_poin * (wk_bk - uik_ujk_Sij)) / (tr_uij + quasi_strain_sq)"
 
         self.add_substitutions_subgrid_stress(problem)
 
@@ -281,5 +287,24 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
 
             # κ_sgs = -C^2 Δₖ² ∂ₖuᵢ ∂ₖc ∂ᵢc / |∇c|²
             κ_sgs = f"κ{c}_sgs"
-            problem.substitutions[κ_sgs] = f"zero_max(-C_poin * {uik_ck_ci} / ({mod_Dc}+reg))"
+            problem.substitutions[κ_sgs] = f"zero_max(-C_poin * {uik_ck_ci} / ({mod_Dc}+quasi_strain))"
             self.add_substitutions_subgrid_flux(problem, c)
+
+
+class StratifiedAnisotropicMinimumDissipation(AnisotropicMinimumDissipation):
+    """
+    A stratification-aware Anisotropic minimum dissipation (AMD) turbulence closure for Large Eddy Simulation.
+
+    Parameters
+    ----------
+    C : float
+        Poincare constant
+
+    quasi_strain : float
+        A 'regularization' parameter that prevents the AMD eddy viscosity from being NaN.
+        Only use this with trivial initial condition that lead to an AMD eddy viscosity of ν_sgs = 0/0.
+        quasi_strain has units of strain, and should be much smaller than resolved strain in non-quiescent 
+        regions of the flow.
+    """
+    def __init__(self, C=1/12, quasi_strain=0):
+        AnisotropicMinimumDissipation.__init__(self, C=C, quasi_strain=quasi_strain, stratified=True) 
