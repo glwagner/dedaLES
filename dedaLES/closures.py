@@ -34,8 +34,6 @@ def add_closure_substitutions(problem, closure, tracers=[], **kwargs):
         problem.substitutions['Lw_sgs'] = "0"
         # For convenience:
         problem.substitutions['ν_sgs'] = "0"
-        problem.substitutions['ν_sgs'] = "0"
-        problem.substitutions['ν_sgs'] = "0"
         for c in tracers:
             problem.substitutions[f'N{c}_sgs'] = "0"
             problem.substitutions[f'L{c}_sgs'] = "0"
@@ -113,7 +111,7 @@ class EddyViscosityClosure():
 
         # Linear terms
         for ij in tensor_components_3d:
-            problem.substitutions[f'τ{ij}_linear'] = f"2 * (ν{ij}_sgs_const + ν_split) * S{ij}"
+            problem.substitutions[f'τ{ij}_linear'] = f"2 * (ν{ij}_sgs_const + ν_split) * S{ij}" # this will fail if Sij involves non-constant terms.
 
         # Linear subgrid momentum fluxes
         problem.substitutions['Lu_sgs'] = "dx(τxx_linear) + dy(τyx_linear) + dz(τzx_linear)"
@@ -122,7 +120,7 @@ class EddyViscosityClosure():
 
         # Subgrid stress proportional to eddy viscosity
         for ij in tensor_components_3d:
-            problem.substitutions[f'τ{ij}'] = f"2 * (ν_sgs - ν_split) * S{ij}" # this will fail if Sij involves non-constant terms.
+            problem.substitutions[f'τ{ij}'] = f"2 * (ν_sgs - ν_split) * S{ij}" 
 
         # Nonlinear subgrid momentum fluxes
         problem.substitutions['Nu_sgs'] = "dx(τxx) + dy(τyx) + dz(τzx)"
@@ -150,7 +148,6 @@ class EddyViscosityClosure():
         qz_linear = f"qz_{c}_linear"
         Lc_sgs = f"L{c}_sgs"
         problem.substitutions[Lc_sgs] = f"- dx({qx_linear}) - dy({qy_linear}) - dz({qz_linear})"
-
 
         # Subgrid buoyancy fluxes
         qx = f"q{c}x"
