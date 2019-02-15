@@ -36,10 +36,10 @@ def identifier(model, closure=None):
             model.nx, model.ny, model.nz, float_2_nice_str(-model.surface_flux), 1/np.sqrt(initial_N2), closure_name)
 
 # Main parameters
-nx = ny = nz = 128      # x,y,z resolution 
-Lx = Ly = Lz = 1.0      # x,y,z extent [m]
-initial_N    = 1/500.0  # Initial buoyancy frequency [s⁻¹]
-surface_flux = -1e-10   # Buoyancy flux into ocean [m² s⁻³]
+nx = ny = nz = 512       # x,y,z resolution 
+Lx = Ly = Lz = 2.0       # x,y,z extent [m]
+initial_N    = 1/300.0   # Initial buoyancy frequency [s⁻¹]
+surface_flux = -1e-10    # Buoyancy flux into ocean [m² s⁻³]
 
 # Physical constants
 κ  = 1.43e-7  # Thermal diffusivity [m² s⁻¹]
@@ -56,9 +56,9 @@ surface_bz = surface_flux/κ # [s⁻²]
 initial_dt = 1e-2 / np.sqrt(-surface_bz)
 w_turb     = (-Lz*surface_flux)**(1/3)         # Domain turbulent velocity scale [m s⁻¹]
 noise_amp  = 0.01*w_turb                       # Noise amplitude [m s⁻¹]
-l_kolmo    = (-ν**3/surface_flux)**(1/4)      # Kolmogorov length scale
+l_kolmo    = (-ν**3/surface_flux)**(1/4)       # Kolmogorov length scale
 t_erosion  = -initial_N2*Lz**2/surface_flux    # Time-scale for stratification erosion
-Q = surface_flux*ρ0*cP/(α*g) # [W m⁻²]
+Q = surface_flux*ρ0*cP*α*g # [W m⁻²]
 
 # Numerical parameters
 CFL_cadence = 10
@@ -120,7 +120,7 @@ model.set_bc("no penetration", "top", "bottom")
 model.set_bc("free slip", "top", "bottom")
 model.set_tracer_gradient_bc("b", "top", gradient="surface_bz") #*tanh(t/tb)")
 model.set_tracer_gradient_bc("b", "bottom", gradient="initial_N2")
-model.build_solver(timestepper='RK222')
+model.build_solver(timestepper='SBDF3')
 
 # Initial condition
 noise = noise_amp * dedaLES.random_noise(model.domain) * model.z * (Lz - model.z) / Lz**2

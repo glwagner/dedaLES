@@ -14,6 +14,8 @@ flux divergence is Lc_sgs.
 
 import numpy as np
 
+from .utils import bind_parameters
+
 tensor_components_3d = ['xx', 'yy', 'zz', 'xy', 'yz', 'zx', 'yx', 'zy', 'xz']
 
 def add_closure_variables(variables, closure):
@@ -90,6 +92,8 @@ class EddyViscosityClosure():
         w : str
             Name of the flow field in the z-direction
         """
+        bind_parameters(self, u='u', v='v', w='w')
+
         problem.substitutions['Sxx'] = f"{u}x"
         problem.substitutions['Syy'] = f"{v}y"
         problem.substitutions['Szz'] = f"{w}z"
@@ -114,9 +118,13 @@ class EddyViscosityClosure():
             problem.substitutions[f'τ{ij}_linear'] = f"2 * (ν{ij}_sgs_const + ν_split) * S{ij}" # this will fail if Sij involves non-constant terms.
 
         # Linear subgrid momentum fluxes
-        problem.substitutions['Lu_sgs'] = "dx(τxx_linear) + dy(τyx_linear) + dz(τzx_linear)"
-        problem.substitutions['Lv_sgs'] = "dx(τxy_linear) + dy(τyy_linear) + dz(τzy_linear)"
-        problem.substitutions['Lw_sgs'] = "dx(τxz_linear) + dy(τyz_linear) + dz(τzz_linear)"
+        #problem.substitutions['Lu_sgs'] = "dx(τxx_linear) + dy(τyx_linear) + dz(τzx_linear)"
+        #problem.substitutions['Lv_sgs'] = "dx(τxy_linear) + dy(τyy_linear) + dz(τzy_linear)"
+        #problem.substitutions['Lw_sgs'] = "dx(τxz_linear) + dy(τyz_linear) + dz(τzz_linear)"
+        u, v, w = self.u, self.v, self.w
+        problem.substitutions['Lu_sgs'] = f"ν_split*(dx({u}x) + dy({u}y) + dz({u}z))" 
+        problem.substitutions['Lv_sgs'] = f"ν_split*(dx({v}x) + dy({v}y) + dz({v}z))" 
+        problem.substitutions['Lw_sgs'] = f"ν_split*(dx({w}x) + dy({w}y) + dz({w}z))" 
 
         # Subgrid stress proportional to eddy viscosity
         for ij in tensor_components_3d:
@@ -147,7 +155,8 @@ class EddyViscosityClosure():
         qy_linear = f"qy_{c}_linear"
         qz_linear = f"qz_{c}_linear"
         Lc_sgs = f"L{c}_sgs"
-        problem.substitutions[Lc_sgs] = f"- dx({qx_linear}) - dy({qy_linear}) - dz({qz_linear})"
+        #problem.substitutions[Lc_sgs] = f"- dx({qx_linear}) - dy({qy_linear}) - dz({qz_linear})"
+        problem.substitutions[Lc_sgs] = f"κ_split*(dx({c}x) + dy({c}y) + dz({c}z))"
 
         # Subgrid buoyancy fluxes
         qx = f"q{c}x"
@@ -371,7 +380,7 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
 
             # κ_sgs = -C^2 Δₖ² ∂ₖuᵢ ∂ₖc ∂ᵢc / |∇c|²
             κ_sgs = f"κ{c}_sgs"
-            problem.substitutions[κ_sgs] = f"zero_max(-C_poin * {uik_ck_ci} / ({mod_Dc}+quasi_strain))"
+            problem.substitutions[κ_sgs] = f"zero_max(-C_poin * {uik_ck_ci} / ({mod_Dc} + quasi_strain_sq))"
             self.add_substitutions_subgrid_flux(problem, c)
 
 
