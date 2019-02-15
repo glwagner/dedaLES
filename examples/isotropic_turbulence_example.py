@@ -18,7 +18,7 @@ Lx = Ly = Lz = 2*pi
 
 # Homoegneous Navier-Stokes equations
 closure = None
-model = dedaLES.NavierStokesTriplyPeriodicFlow(nx=nx, ny=ny, nz=nz, Lx=Lx, Ly=Ly, Lz=Lz, 
+model = dedaLES.NavierStokesTriplyPeriodicFlow(nx=nx, ny=ny, nz=nz, Lx=Lx, Ly=Ly, Lz=Lz,
                                                ν=1.0, closure=closure)
 model.build_solver()
 
@@ -54,7 +54,7 @@ flow.add_property("sqrt(u*u + v*v + w*w) / ν", name='Re')
 
 def average_Re(model): return flow.volume_average('Re')
 def max_Re(model): return flow.max('Re')
-    
+
 model.add_log_tasks(avg_Re=average_Re, max_Re=max_Re)
 
 model.stop_at(sim_time=np.inf, wall_time=np.inf, iteration=100)

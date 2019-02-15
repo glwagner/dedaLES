@@ -79,7 +79,7 @@ class Flow():
 
         Args
         ----
-            timestepper : The name of the timestepper to be used by the solver. 
+            timestepper : The name of the timestepper to be used by the solver.
         """
         detimestepper = getattr(de.timesteppers, timestepper)
 
@@ -94,7 +94,7 @@ class Flow():
         logger.info('Iteration: %i, Time: %e, dt: %e' %(self.solver.iteration, self.solver.sim_time, dt))
 
         try:
-            for name, task in self.log_tasks.items(): 
+            for name, task in self.log_tasks.items():
                 logger.info("{}: {}".format(name, task(self)))
         except NameError:
             pass
@@ -123,7 +123,7 @@ class Flow():
             start_run_time = time.time()
             while self.solver.ok:
                 self.solver.step(dt)
-                if self.time_to_log(log_cadence): 
+                if self.time_to_log(log_cadence):
                     self.log(runlogger, dt)
         except:
             runlogger.error('Exception raised, triggering end of main loop.')
@@ -136,11 +136,11 @@ class Flow():
             runlogger.info(
                 'Run time: %f cpu-hr' %((end_run_time-start_run_time) / hour * self.domain.dist.comm_cart.size))
 
-    
+
 
 class ChannelFlow(Flow):
     """A model for `x,y` doubly-periodic flow between rigid walls in `z`."""
-    def __init__(self, nx, ny, nz, Lx, Ly, Lz, xleft, yleft, zbottom): 
+    def __init__(self, nx, ny, nz, Lx, Ly, Lz, xleft, yleft, zbottom):
 
         Flow.__init__(self, nx, ny, nz, Lx, Ly, Lz)
 
@@ -160,7 +160,7 @@ class ChannelFlow(Flow):
     # Boundary condition API.
     def set_nopenetration_bc_top(self):
         # Forbid domain-averaged vertical velocity.
-        self.problem.add_bc("right(w) = 0", condition="(nx != 0) or (ny != 0)") 
+        self.problem.add_bc("right(w) = 0", condition="(nx != 0) or (ny != 0)")
 
     def set_nopenetration_bc_bottom(self):
         self.problem.add_bc("left(w) = 0")
@@ -172,7 +172,7 @@ class ChannelFlow(Flow):
     def set_noslip_bc_bottom(self):
         self.problem.add_bc("left(u) = 0")
         self.problem.add_bc("left(v) = 0")
-    
+
     def set_freeslip_bc_top(self):
         self.problem.add_bc("right(uz) = 0")
         self.problem.add_bc("right(vz) = 0")

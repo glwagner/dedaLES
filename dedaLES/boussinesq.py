@@ -8,9 +8,9 @@ from .closures import add_closure_substitutions, add_closure_variables, add_clos
 
 default_substitutions = {
         'ε' : "ν*(ux*ux + uy*uy + uz*uz + vx*vx + vy*vy + vz*vz + wx*wx + wy*wy + wz*wz)",
-    'ε_sgs' : "-u*Fx_sgs - v*Fy_sgs - w*Fz_sgs",
+    'ε_sgs' : "-u*(Nu_sgs+Lu_sgs) - v*(Nv_sgs+Lv_sgs) - w*(Nw_sgs+Lw_sgs)",
         'χ' : "κ*(bx*bx + by*by + bz*bz)",
-    'χ_sgs' : "-b*Fb_sgs"
+    'χ_sgs' : "-b*(Nb_sgs+Lb_sgs)"
 }
 
 class BoussinesqChannelFlow(ChannelFlow):
@@ -19,7 +19,7 @@ class BoussinesqChannelFlow(ChannelFlow):
 
     Args
     ----
-        nx : (int) 
+        nx : (int)
             Grid resolution in :math:`x`
 
         ny : (int)
@@ -34,32 +34,32 @@ class BoussinesqChannelFlow(ChannelFlow):
         Ly : (float)
             Domain extent in :math:`y`
 
-        Lz : (float) 
-            Domain extent in :math:`z` 
+        Lz : (float)
+            Domain extent in :math:`z`
 
         f : (float)
-            Coriolis parameter 
+            Coriolis parameter
 
         ν : (float)
-            'Molecular' viscosity 
+            'Molecular' viscosity
 
         κ : (float)
-            'Molecular' diffusivity for buoyancy 
+            'Molecular' diffusivity for buoyancy
 
         Nsq : (float)
-            Background buoyancy gradient 
+            Background buoyancy gradient
 
         closure : (None or closure.EddyViscosityClosure)
-            Turbulent closure for Large Eddy Simulation 
+            Turbulent closure for Large Eddy Simulation
 
         xleft : (float)
-            Domain x-origin 
+            Domain x-origin
 
         yleft : (float)
-            Domain y-origin 
+            Domain y-origin
 
         zbottom : (float)
-            Domain z-origin 
+            Domain z-origin
 
         **params : (any)
             Additional parameters to be added to the dedalus problem.
@@ -68,19 +68,19 @@ class BoussinesqChannelFlow(ChannelFlow):
         nx = 32,
         ny = 32,
         nz = 32,
-        Lx = 1.0,       
-        Ly = 1.0,       
-        Lz = 1.0,       
-        f = 0.0,       
-        κ = 1.43e-7,   
-        ν = 1.05e-6,   
-        Nsq = 0.0,       
-        closure = None,  
-        xleft = None,  
-        yleft = None,  
-        zbottom = None,  
+        Lx = 1.0,
+        Ly = 1.0,
+        Lz = 1.0,
+        f = 0.0,
+        κ = 1.43e-7,
+        ν = 1.05e-6,
+        Nsq = 0.0,
+        closure = None,
+        xleft = None,
+        yleft = None,
+        zbottom = None,
         substitutions = default_substitutions,
-        **params         
+        **params
         ):
 
         ChannelFlow.__init__(self, nx, ny, nz, Lx, Ly, Lz, xleft, yleft, zbottom)
@@ -90,7 +90,7 @@ class BoussinesqChannelFlow(ChannelFlow):
         self.ybasis = ybasis = de.Fourier('y', ny, interval=self.ylimits, dealias=3/2)
         self.zbasis = zbasis = de.Chebyshev('z', nz, interval=self.zlimits, dealias=3/2)
         self.domain = domain = de.Domain([xbasis, ybasis, zbasis], grid_dtype=np.float64)
-        
+
         variables = ['p', 'b', 'u', 'v', 'w', 'bz', 'uz', 'vz', 'wz']
         add_closure_variables(variables, closure)
 
@@ -107,12 +107,12 @@ class BoussinesqChannelFlow(ChannelFlow):
 
         # Custom substitutions
         add_substitutions(problem, **substitutions)
-                   
+
         # Equations
-        problem.add_equation("dt(u) - ν*(dx(ux) + dy(uy) + dz(uz)) + dx(p) - f*v = - u*ux - v*uy - w*uz + Fx_sgs")
-        problem.add_equation("dt(v) - ν*(dx(vx) + dy(vy) + dz(vz)) + dy(p) + f*u = - u*vx - v*vy - w*vz + Fy_sgs")
-        problem.add_equation("dt(w) - ν*(dx(wx) + dy(wy) + dz(wz)) + dz(p) - b   = - u*wx - v*wy - w*wz + Fz_sgs")
-        problem.add_equation("dt(b) - κ*(dx(bx) + dy(by) + dz(bz)) + Nsq*w = - u*bx - v*by - w*bz + Fb_sgs")
+        problem.add_equation(f"dt(u) - ν*(dx(ux) + dy(uy) + dz(uz)) + dx(p) - f*v - Lu_sgs = - u*ux - v*uy - w*uz + Nu_sgs")
+        problem.add_equation(f"dt(v) - ν*(dx(vx) + dy(vy) + dz(vz)) + dy(p) + f*u - Lv_sgs = - u*vx - v*vy - w*vz + Nv_sgs")
+        problem.add_equation(f"dt(w) - ν*(dx(wx) + dy(wy) + dz(wz)) + dz(p) - b   - Lw_sgs = - u*wx - v*wy - w*wz + Nw_sgs")
+        problem.add_equation(f"dt(b) - κ*(dx(bx) + dy(by) + dz(bz)) + Nsq*w       - Lb_sgs = - u*bx - v*by - w*bz + Nb_sgs")
         problem.add_equation("ux + vy + wz = 0")
 
         # First-order equivalencies
@@ -154,5 +154,5 @@ class BoussinesqChannelFlow(ChannelFlow):
         """Print messages."""
         logger.info('Iteration: %i, Time: %e, dt: %e' %(self.solver.iteration, self.solver.sim_time, dt))
 
-        for name, task in self.log_tasks.items(): 
+        for name, task in self.log_tasks.items():
             logger.info("{} = {}".format(name, task(self)))

@@ -14,7 +14,7 @@ class NavierStokesTriplyPeriodicFlow(Flow):
 
     Parameters
     ----------
-        nx : (int) 
+        nx : (int)
             Grid resolution in :math:`x`
 
         ny : (int)
@@ -29,17 +29,17 @@ class NavierStokesTriplyPeriodicFlow(Flow):
         Ly : (float)
             Domain extent in :math:`y`
 
-        Lz : (float) 
-            Domain extent in :math:`z` 
+        Lz : (float)
+            Domain extent in :math:`z`
 
         f : (float)
-            Coriolis parameter 
+            Coriolis parameter
 
         ν : (float)
-            'Molecular' viscosity 
+            'Molecular' viscosity
 
         closure : (None or closure.EddyViscosityClosure)
-            Turbulent closure for Large Eddy Simulation 
+            Turbulent closure for Large Eddy Simulation
 
         **params : (any)
             Additional parameters to be added to the dedalus problem.
@@ -92,7 +92,7 @@ class NavierStokesTriplyPeriodicFlow(Flow):
         add_parameters(problem, ν=ν, **params)
         bind_parameters(self, ν=ν, **params)
 
-        problem.substitutions['u_bg'] = u_bg 
+        problem.substitutions['u_bg'] = u_bg
         problem.substitutions['v_bg'] = v_bg
         problem.substitutions['w_bg'] = w_bg
         problem.substitutions['p_bg'] = p_bg
@@ -101,8 +101,8 @@ class NavierStokesTriplyPeriodicFlow(Flow):
         problem.substitutions['V'] = "v + v_bg"
         problem.substitutions['W'] = "w + w_bg"
 
-        add_first_derivative_substitutions(problem, 
-            ['u', 'v', 'w', 'p', 'U', 'V', 'W', 'u_bg', 'v_bg', 'w_bg', 'p_bg'], 
+        add_first_derivative_substitutions(problem,
+            ['u', 'v', 'w', 'p', 'U', 'V', 'W', 'u_bg', 'v_bg', 'w_bg', 'p_bg'],
             ['x', 'y', 'z']
         )
 
@@ -113,24 +113,24 @@ class NavierStokesTriplyPeriodicFlow(Flow):
 
         ## Momentum equations:
         # Primary linear terms
-        linear_x = "px - ν*div(ux, uy, uz)" 
-        linear_y = "py - ν*div(vx, vy, vz)" 
-        linear_z = "pz - ν*div(wx, wy, wz)" 
-        
+        linear_x = "px - ν*div(ux, uy, uz)"
+        linear_y = "py - ν*div(vx, vy, vz)"
+        linear_z = "pz - ν*div(wx, wy, wz)"
+
         # Linear background terms
         if include_linear_bg:
-            linear_bg_x = "p_bgx - ν*div(u_bgx, u_bgy, u_bgz)" 
-            linear_bg_y = "p_bgy - ν*div(v_bgx, v_bgy, v_bgz)" 
-            linear_bg_z = "p_bgz - ν*div(w_bgx, w_bgy, w_bgz)" 
+            linear_bg_x = "p_bgx - ν*div(u_bgx, u_bgy, u_bgz)"
+            linear_bg_y = "p_bgy - ν*div(v_bgx, v_bgy, v_bgz)"
+            linear_bg_z = "p_bgz - ν*div(w_bgx, w_bgy, w_bgz)"
         else:
             linear_bg_x = "0"
             linear_bg_y = "0"
             linear_bg_z = "0"
 
-        xmom = f"dt(u) + {linear_x} = - {linear_bg_x} - U*Ux - V*Uy - W*Uz + Fx_sgs"
-        ymom = f"dt(v) + {linear_y} = - {linear_bg_y} - U*Vx - V*Vy - W*Vz + Fy_sgs"
-        zmom = f"dt(w) + {linear_z} = - {linear_bg_z} - U*Wx - V*Wy - W*Wz + Fz_sgs"
-                   
+        xmom = f"dt(u) + {linear_x} + Lu_sgs = - {linear_bg_x} - U*Ux - V*Uy - W*Uz + Nu_sgs"
+        ymom = f"dt(v) + {linear_y} + Lv_sgs = - {linear_bg_y} - U*Vx - V*Vy - W*Vz + Nv_sgs"
+        zmom = f"dt(w) + {linear_z} + Lw_sgs = - {linear_bg_z} - U*Wx - V*Wy - W*Wz + Nw_sgs"
+
         problem.add_equation(xmom)
         problem.add_equation(ymom)
         problem.add_equation(zmom)

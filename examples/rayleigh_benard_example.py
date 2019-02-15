@@ -1,7 +1,7 @@
 """
 This script reproduces results from
 
-Robert M Kerr, "Rayleigh number scaling in numerical convection", 
+Robert M Kerr, "Rayleigh number scaling in numerical convection",
 Journal of Fluid Mechanics (1996)
 """
 
