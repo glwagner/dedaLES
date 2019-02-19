@@ -8,12 +8,15 @@
 # newnodes              (32)    2-10-1  12:00:00
 
 # Job
+#SBATCH --reservation=wagner
 #SBATCH --partition=sched_mit_hill
-#SBATCH --nodes=1
+#SBATCH --qos=plenum
+
+#SBATCH --nodes=4
 #SBATCH --ntasks-per-node=16
 #SBATCH --mem-per-cpu=4000
-#SBATCH --time=1:00:00
-#SBATCH --job-name="merge"
+#SBATCH --time=4:00:00
+#SBATCH --job-name="FC0"
 
 # Streams
 #SBATCH --output=job_%j.out
@@ -24,8 +27,4 @@
 conda activate dedalus
 
 # Content
-#mpiexec python3 free_convection_example.py >> FC1_12_RK2.out
-
-analysis="freeconvection_nx256_ny256_nz256_F0p0000000001_Ninv300_DNS"
-
-mpiexec python3 merge.py $analysis >> merge_$analysis.out
+mpiexec python3 free_convection_example.py >> FC0.out
