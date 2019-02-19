@@ -119,13 +119,9 @@ class EddyViscosityClosure():
 
         # Linear subgrid momentum fluxes
         u, v, w = self.u, self.v, self.w
-        problem.substitutions['Lu_sgs'] = f"ν_split*(dx({u}x) + dy({u}y) + dz({u}z))" 
-        problem.substitutions['Lv_sgs'] = f"ν_split*(dx({v}x) + dy({v}y) + dz({v}z))" 
-        problem.substitutions['Lw_sgs'] = f"ν_split*(dx({w}x) + dy({w}y) + dz({w}z))" 
-
-        #problem.substitutions['Lu_sgs'] = "dx(τxx_linear) + dy(τyx_linear) + dz(τzx_linear)"
-        #problem.substitutions['Lv_sgs'] = "dx(τxy_linear) + dy(τyy_linear) + dz(τzy_linear)"
-        #problem.substitutions['Lw_sgs'] = "dx(τxz_linear) + dy(τyz_linear) + dz(τzz_linear)"
+        problem.substitutions['Lu_sgs'] = "dx(τxx_linear) + dy(τyx_linear) + dz(τzx_linear) + ν_split*(dx({u}x) + dy({u}y) + dz({u}z))" 
+        problem.substitutions['Lv_sgs'] = "dx(τxy_linear) + dy(τyy_linear) + dz(τzy_linear) + ν_split*(dx({v}x) + dy({v}y) + dz({v}z))" 
+        problem.substitutions['Lw_sgs'] = "dx(τxz_linear) + dy(τyz_linear) + dz(τzz_linear) + ν_split*(dx({w}x) + dy({w}y) + dz({w}z))" 
 
         # Subgrid stress proportional to eddy viscosity
         for ij in tensor_components_3d:
@@ -156,8 +152,7 @@ class EddyViscosityClosure():
         qy_linear = f"qy_{c}_linear"
         qz_linear = f"qz_{c}_linear"
         Lc_sgs = f"L{c}_sgs"
-        problem.substitutions[Lc_sgs] = f"κ_split*(dx({c}x) + dy({c}y) + dz({c}z))"
-        #problem.substitutions[Lc_sgs] = f"- dx({qx_linear}) - dy({qy_linear}) - dz({qz_linear})"
+        problem.substitutions[Lc_sgs] = f"- dx({qx_linear}) - dy({qy_linear}) - dz({qz_linear}) + κ_split*(dx({c}x) + dy({c}y) + dz({c}z))"
 
         # Subgrid buoyancy fluxes
         qx = f"q{c}x"
