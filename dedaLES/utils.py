@@ -1,7 +1,24 @@
 import numpy as np
 from mpi4py import MPI
 
+from dedalus.extras.flow_tools import CFL
+from dedalus.core.future import FutureField
+
+def grid_stats(model, axis):
+    """Compute minimum and maximum grid spacing of the `model` along `axis`."""
+    Δmin = np.min(model.problem.domain.grid_spacing(axis))
+    Δmax = np.max(model.problem.domain.grid_spacing(axis))
+    return Δmin, Δmax
+
+def min_spacing(model):
+    """Compute the minimum grid spacing of the `model`."""
+    Δmin = []
+    for axis in range(model.problem.domain.dim):
+        Δmin.append(model.problem.domain.grid_spacing(axis))
+    return np.min(np.array(Δmin))
+
 def random_noise(domain, amplitude=1, seed=23):
+    """Generate `domain`-spanning `amplitude` random noise with random seed `seed`."""
     rand = np.random.RandomState(seed=seed)
     gshape = domain.dist.grid_layout.global_shape(scales=1)
     slices = domain.dist.grid_layout.slices(scales=1)
@@ -58,3 +75,54 @@ def bind_parameters(obj, **params):
     """
     for name, value in params.items():
         setattr(obj, name, value)
+
+
+class TimeStepGizmo(CFL):
+    """ 
+    Computes frequency-limited timestep from a set of frequencies, velocities, and diffusivities.
+
+    Parameters
+    ----------
+    solver : solver object
+        Problem solver
+
+    initial_dt : float
+        Initial timestep
+
+    cadence : int, optional
+        Iteration cadence for computing new timestep (default: 1)
+
+    safety : float, optional
+        Safety factor for scaling computed timestep (default: 1.)
+
+    max_dt : float, optional
+        Maximum allowable timestep (default: inf)
+
+    min_dt : float, optional
+        Minimum allowable timestep (default: 0.)
+
+    max_change : float, optional
+        Maximum fractional change between timesteps (default: inf)
+
+    min_change : float, optional
+        Minimum fractional change between timesteps (default: 0.)
+
+    threshold : float, optional
+        Fractional change threshold for changing timestep (default: 0.)
+
+    Notes
+    -----
+    The new timestep is computed by summing across the provided frequencies
+    for each grid point, and then reciprocating the maximum "total" frequency
+    from the entire grid.
+
+    """
+    def __init__(self, *args, **kwargs):
+        CFL.__init__(self, *args, **kwargs)
+
+    def add_diffusivity(self, diffusivity):
+        """Add an on-grid isotropic diffusivity."""
+        diff = FutureField.parse(diffusivity, self.solver.evaluator.vars, self.solver.domain)    
+        for axis in range(self.solver.domain.dim):
+            freq = diff / self.grid_spacings[axis]**2 
+            self.add_frequency(freq)

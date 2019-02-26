@@ -1,6 +1,8 @@
 *.swp
 *.h5
+*.npz
 *__pycache__
 docs/build
 job*
-*.out
+*.o*
+
