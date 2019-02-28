@@ -60,8 +60,8 @@ class EddyViscosityClosure():
     -----
         * `ν_sgs` denotes the nonlinear, isotropic eddy viscosity.
         * `νij_sgs_const` denotes the constant eddy viscosity tensor with components `ij = ['xx', 'yy', 'xy', ...]`
-        * `κc_sgs` denotes the nonlinear, isotropic eddy diffusivity for tracer `c`. 
-        * `κij_c_sgs_const` denotes the constant eddy diffusivity tensor for tracer `c` and component `ij`. 
+        * `κc_sgs` denotes the nonlinear, isotropic eddy diffusivity for tracer `c`.
+        * `κij_c_sgs_const` denotes the constant eddy diffusivity tensor for tracer `c` and component `ij`.
     """
     def __init__(self):
         pass
@@ -87,7 +87,7 @@ class EddyViscosityClosure():
         w : str
             Name of the flow field in the z-direction
         """
-        bind_parameters(self, u='u', v='v', w='w')
+        bind_parameters(self, u=u, v=v, w=w)
 
         problem.substitutions['Sxx'] = f"{u}x"
         problem.substitutions['Syy'] = f"{v}y"
@@ -118,13 +118,13 @@ class EddyViscosityClosure():
 
         # Linear subgrid momentum fluxes
         u, v, w = self.u, self.v, self.w
-        problem.substitutions['Lu_sgs'] = f"dx(τxx_linear) + dy(τyx_linear) + dz(τzx_linear) + ν_split*(dx({u}x) + dy({u}y) + dz({u}z))" 
-        problem.substitutions['Lv_sgs'] = f"dx(τxy_linear) + dy(τyy_linear) + dz(τzy_linear) + ν_split*(dx({v}x) + dy({v}y) + dz({v}z))" 
-        problem.substitutions['Lw_sgs'] = f"dx(τxx_linear) + dy(τyx_linear) + dz(τzx_linear) + ν_split*(dx({w}x) + dy({w}y) + dz({w}z))" 
+        problem.substitutions['Lu_sgs'] = f"dx(τxx_linear) + dy(τyx_linear) + dz(τzx_linear) + ν_split*(dx({u}x) + dy({u}y) + dz({u}z))"
+        problem.substitutions['Lv_sgs'] = f"dx(τxy_linear) + dy(τyy_linear) + dz(τzy_linear) + ν_split*(dx({v}x) + dy({v}y) + dz({v}z))"
+        problem.substitutions['Lw_sgs'] = f"dx(τxx_linear) + dy(τyx_linear) + dz(τzx_linear) + ν_split*(dx({w}x) + dy({w}y) + dz({w}z))"
 
         # Subgrid stress proportional to eddy viscosity
         for ij in tensor_components_3d:
-            problem.substitutions[f'τ{ij}'] = f"2 * (ν_sgs - ν_split) * S{ij}" 
+            problem.substitutions[f'τ{ij}'] = f"2 * (ν_sgs - ν_split) * S{ij}"
 
         # Nonlinear subgrid momentum fluxes
         problem.substitutions['Nu_sgs'] = "dx(τxx) + dy(τyx) + dz(τzx)"
@@ -170,7 +170,7 @@ class EddyViscosityClosure():
         Nc_sgs = f"N{c}_sgs"
         problem.substitutions[Nc_sgs] = f"- dx({qx}) - dy({qy}) - dz({qz})"
 
-        
+
     def add_closure_substitutions(self):
         pass
 
@@ -191,7 +191,7 @@ class ConstantSmagorinsky(EddyViscosityClosure):
         Turbulent Schmidt number (Sc = ν_sgs / κ_sgs)
 
     ν_split : float
-        Viscosity splitting parameter. A viscous term with viscosity ν_split 
+        Viscosity splitting parameter. A viscous term with viscosity ν_split
         is added to the LHS and subtracted from the RHS.
 
     Notes
@@ -256,17 +256,17 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
         Set to 'True' to use the stratified version of AMD
 
     ν_split : float
-        Viscosity splitting parameter. A viscous term with viscosity ν_split 
+        Viscosity splitting parameter. A viscous term with viscosity ν_split
         is added to the LHS and subtracted from the RHS.
 
     κ_split : float
-        Diffusivity splitting parameter. A diffusive term with diffusivity κ_split 
+        Diffusivity splitting parameter. A diffusive term with diffusivity κ_split
         is added to the LHS and subtracted from the RHS.
 
     quasi_strain : float
         A 'regularization' parameter that prevents the AMD eddy viscosity from being NaN.
         Only use this with trivial initial condition that lead to an AMD eddy viscosity of ν_sgs = 0/0.
-        quasi_strain has units of strain, and should be much smaller than resolved strain in non-quiescent 
+        quasi_strain has units of strain, and should be much smaller than resolved strain in non-quiescent
         regions of the flow.
 
     quasi_gradient : float
@@ -391,17 +391,17 @@ class StratifiedAnisotropicMinimumDissipation(AnisotropicMinimumDissipation):
         Poincare constant
 
     ν_split : float
-        Viscosity splitting parameter. A viscous term with viscosity ν_split 
+        Viscosity splitting parameter. A viscous term with viscosity ν_split
         is added to the LHS and subtracted from the RHS.
 
     κ_split : float
-        Diffusivity splitting parameter. A diffusive term with diffusivity κ_split 
+        Diffusivity splitting parameter. A diffusive term with diffusivity κ_split
         is added to the LHS and subtracted from the RHS.
 
     quasi_strain : float
         A 'regularization' parameter that prevents the AMD eddy viscosity from being NaN.
         Only use this with trivial initial conditions that lead to an AMD eddy viscosity of ν_sgs = 0/0.
-        quasi_strain has units of strain, and should be much smaller than resolved strain in non-quiescent 
+        quasi_strain has units of strain, and should be much smaller than resolved strain in non-quiescent
         regions of the flow.
 
     quasi_gradient : float
@@ -409,5 +409,5 @@ class StratifiedAnisotropicMinimumDissipation(AnisotropicMinimumDissipation):
         See quasi_strain for caveats.
     """
     def __init__(self, C=1/12, ν_split=0, κ_split=0, quasi_strain=0, quasi_gradient=0):
-        AnisotropicMinimumDissipation.__init__(self, stratified=True, C=C, ν_split=0, κ_split=0, quasi_strain=quasi_strain, 
+        AnisotropicMinimumDissipation.__init__(self, stratified=True, C=C, ν_split=0, κ_split=0, quasi_strain=quasi_strain,
                                                quasi_gradient=quasi_gradient)
