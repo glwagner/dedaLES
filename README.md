@@ -1,4 +1,4 @@
-# dedaLES
+# dedaLES: Large Eddy simulation with dedalus!
 
 This python package provides classes and functions for performing
 Direct Numerical Simulation (DNS) and Large Eddy Simulation (LES) 
