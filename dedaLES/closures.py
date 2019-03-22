@@ -397,7 +397,7 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
             problem.substitutions[uik_ck_ci] = (
                    f"Δx**2 * {c}x * {Dc_dot_ux}" +
                 f" + Δy**2 * {c}y * {Dc_dot_uy}" +
-                f" + Δz**2 * {c}z * {D
+                f" + Δz**2 * {c}z * {Dc_dot_uz}")
 
             # κ_sgs = -C^2 Δₖ² ∂ₖuᵢ ∂ₖc ∂ᵢc / |∇c|²
             κ_sgs = f"κ{c}_sgs"
