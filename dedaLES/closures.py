@@ -208,12 +208,14 @@ class ConstantSmagorinsky(EddyViscosityClosure):
         Δx[i] = Dx * 2 * Δx[i] = Dx * (x[i+1] - x[i-1])
 
     """
-    def __init__(self, Δ_const=0, C=0.17, Sc=1, ν_split=0):
+    def __init__(self, Δ_const=0, C=0.17, Sc=1, ν_split=0, ν_soft=None, κ_soft=None):
         self.Δ_const = Δ_const
         self.C = C
         self.Sc = Sc
         self.ν_split = ν_split
         self.κ_split = ν_split / Sc
+        self.ν_soft = ν_soft
+        self.κ_soft = κ_soft
 
     def add_substitutions(self, problem, tracers=[], u='u', v='v', w='w', **kwargs):
         # Construct grid-based filter field
@@ -230,9 +232,17 @@ class ConstantSmagorinsky(EddyViscosityClosure):
         problem.parameters['C_poin'] = self.C
         problem.parameters['Sc_sgs'] = self.Sc
 
+        substitute_max_functions(problem)
+
+        if self.ν_soft is None or self.ν_soft is 0:
+            problem.substitutions['ν_max(ν)'] = "ν"
+        else:
+            problem.parameters['ν_soft'] = self.ν_soft
+            problem.substitutions['ν_max(ν)'] = "softmax(ν, ν_soft)"
+
         # Add subgrid substitutions to problem
         self.add_substitutions_strain_rate_tensor(problem, u=u, v=v, w=w)
-        problem.substitutions['ν_sgs'] = "(Δ0**2 + (C_poin*Δ)**2) * sqrt(2*tr_S2)"
+        problem.substitutions['ν_sgs'] = "ν_max((Δ0**2 + (C_poin*Δ)**2) * sqrt(2*tr_S2))"
         self.add_substitutions_subgrid_stress(problem)
 
         # Add tracer terms to problem
@@ -331,13 +341,19 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
         # Add subgrid substitutions to problem
         self.add_substitutions_strain_rate_tensor(problem, u=u, v=v, w=w)
 
-        substitute_max_functions(problem) 
+        substitute_max_functions(problem)
 
-        if ν_soft is None or ν_soft is 0: problem.substitutions['ν_max(ν)'] = "hardmax(ν)"
-        else:                             problem.substitutions['ν_max(ν)'] = "softmax(ν, ν_soft)"
+        if self.ν_soft is None or self.ν_soft is 0:
+            problem.substitutions['ν_max(ν)'] = "hardmax(ν)"
+        else:
+            problem.parameters['ν_soft'] = self.ν_soft
+            problem.substitutions['ν_max(ν)'] = "softmax(ν, ν_soft)"
 
-        if κ_soft is None or κ_soft is 0: problem.substitutions['κ_max(κ)'] = "hardmax(κ)"
-        else:                             problem.substitutions['κ_max(κ)'] = "softmax(κ, κ_soft)"
+        if self.κ_soft is None or self.κ_soft is 0:
+            problem.substitutions['κ_max(κ)'] = "hardmax(κ)"
+        else:
+            problem.parameters['κ_soft'] = self.κ_soft
+            problem.substitutions['κ_max(κ)'] = "softmax(κ, κ_soft)"
 
         # AMD substitutions
         problem.substitutions['tr_uij'] = (
@@ -381,7 +397,7 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
             problem.substitutions[uik_ck_ci] = (
                    f"Δx**2 * {c}x * {Dc_dot_ux}" +
                 f" + Δy**2 * {c}y * {Dc_dot_uy}" +
-                f" + Δz**2 * {c}z * {Dc_dot_uz}")
+                f" + Δz**2 * {c}z * {D
 
             # κ_sgs = -C^2 Δₖ² ∂ₖuᵢ ∂ₖc ∂ᵢc / |∇c|²
             κ_sgs = f"κ{c}_sgs"
