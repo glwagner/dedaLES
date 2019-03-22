@@ -14,7 +14,7 @@ flux divergence is Lc_sgs.
 
 import numpy as np
 
-from .utils import bind_parameters
+from .utils import bind_parameters, substitute_max_functions
 
 tensor_components_3d = ['xx', 'yy', 'zz', 'xy', 'yz', 'zx', 'yx', 'zy', 'xz']
 
@@ -331,9 +331,7 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
         # Add subgrid substitutions to problem
         self.add_substitutions_strain_rate_tensor(problem, u=u, v=v, w=w)
 
-        # Max function
-        problem.substitutions['hardmax(x)'] = "0.5 * (abs(x) + x)"
-        problem.substitutions['softmax(x, a)'] = "a * np.logaddexp(0, x/a)"
+        substitute_max_functions(problem) 
 
         if ν_soft is None or ν_soft is 0: problem.substitutions['ν_max(ν)'] = "hardmax(ν)"
         else:                             problem.substitutions['ν_max(ν)'] = "softmax(ν, ν_soft)"
