@@ -14,7 +14,7 @@ flux divergence is Lc_sgs.
 
 import numpy as np
 
-from .utils import bind_parameters
+from .utils import bind_parameters, substitute_max_functions
 
 tensor_components_3d = ['xx', 'yy', 'zz', 'xy', 'yz', 'zx', 'yx', 'zy', 'xz']
 
@@ -208,12 +208,14 @@ class ConstantSmagorinsky(EddyViscosityClosure):
         Δx[i] = Dx * 2 * Δx[i] = Dx * (x[i+1] - x[i-1])
 
     """
-    def __init__(self, Δ_const=0, C=0.17, Sc=1, ν_split=0):
+    def __init__(self, Δ_const=0, C=0.17, Sc=1, ν_split=0, ν_soft=None, κ_soft=None):
         self.Δ_const = Δ_const
         self.C = C
         self.Sc = Sc
         self.ν_split = ν_split
         self.κ_split = ν_split / Sc
+        self.ν_soft = ν_soft
+        self.κ_soft = κ_soft
 
     def add_substitutions(self, problem, tracers=[], u='u', v='v', w='w', **kwargs):
         # Construct grid-based filter field
@@ -230,9 +232,17 @@ class ConstantSmagorinsky(EddyViscosityClosure):
         problem.parameters['C_poin'] = self.C
         problem.parameters['Sc_sgs'] = self.Sc
 
+        substitute_max_functions(problem)
+
+        if self.ν_soft is None or self.ν_soft is 0:
+            problem.substitutions['ν_max(ν)'] = "ν"
+        else:
+            problem.parameters['ν_soft'] = self.ν_soft
+            problem.substitutions['ν_max(ν)'] = "softmax(ν, ν_soft)"
+
         # Add subgrid substitutions to problem
         self.add_substitutions_strain_rate_tensor(problem, u=u, v=v, w=w)
-        problem.substitutions['ν_sgs'] = "(Δ0**2 + (C_poin*Δ)**2) * sqrt(2*tr_S2)"
+        problem.substitutions['ν_sgs'] = "ν_max((Δ0**2 + (C_poin*Δ)**2) * sqrt(2*tr_S2))"
         self.add_substitutions_subgrid_stress(problem)
 
         # Add tracer terms to problem
@@ -273,13 +283,16 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
         A 'regularization' parameter that prevents the AMD eddy diffusivity from being NaN.
         See quasi_strain for caveats.
     """
-    def __init__(self, C=1/12, stratified=False, ν_split=0, κ_split=0, quasi_strain=0, quasi_gradient=0):
+    def __init__(self, C=1/12, stratified=False, ν_split=0, κ_split=0, ν_soft=None, κ_soft=None,
+                 quasi_strain=0, quasi_gradient=0):
         self.C = C
         self.stratified = stratified
         self.ν_split = ν_split
         self.κ_split = κ_split
         self.quasi_strain = quasi_strain
         self.quasi_gradient = quasi_gradient
+        self.ν_soft = ν_soft
+        self.κ_soft = κ_soft
 
     def add_substitutions(self, problem, u='u', v='v', w='w', b='b', tracers=[], **kwargs):
         """Add substitutions associated with the Anisotropic
@@ -328,8 +341,19 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
         # Add subgrid substitutions to problem
         self.add_substitutions_strain_rate_tensor(problem, u=u, v=v, w=w)
 
-        # Soft max function
-        problem.substitutions['zero_max(x)'] = "0.5 * (abs(x) + x)"
+        substitute_max_functions(problem)
+
+        if self.ν_soft is None or self.ν_soft is 0:
+            problem.substitutions['ν_max(ν)'] = "hardmax(ν)"
+        else:
+            problem.parameters['ν_soft'] = self.ν_soft
+            problem.substitutions['ν_max(ν)'] = "softmax(ν, ν_soft)"
+
+        if self.κ_soft is None or self.κ_soft is 0:
+            problem.substitutions['κ_max(κ)'] = "hardmax(κ)"
+        else:
+            problem.parameters['κ_soft'] = self.κ_soft
+            problem.substitutions['κ_max(κ)'] = "softmax(κ, κ_soft)"
 
         # AMD substitutions
         problem.substitutions['tr_uij'] = (
@@ -350,7 +374,7 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
         else:
             problem.substitutions['wk_bk'] = "0"
 
-        problem.substitutions['ν_sgs'] = "zero_max(C_poin * (wk_bk - uik_ujk_Sij)) / (tr_uij + quasi_strain_sq)"
+        problem.substitutions['ν_sgs'] = "ν_max(C_poin * (wk_bk - uik_ujk_Sij)) / (tr_uij + quasi_strain_sq)"
 
         self.add_substitutions_subgrid_stress(problem)
 
@@ -377,7 +401,7 @@ class AnisotropicMinimumDissipation(EddyViscosityClosure):
 
             # κ_sgs = -C^2 Δₖ² ∂ₖuᵢ ∂ₖc ∂ᵢc / |∇c|²
             κ_sgs = f"κ{c}_sgs"
-            problem.substitutions[κ_sgs] = f"zero_max(-C_poin * {uik_ck_ci} / ({mod_Dc} + quasi_gradient_sq))"
+            problem.substitutions[κ_sgs] = f"κ_max(-C_poin * {uik_ck_ci} / ({mod_Dc} + quasi_gradient_sq))"
             self.add_substitutions_subgrid_flux(problem, c)
 
 
@@ -387,27 +411,7 @@ class StratifiedAnisotropicMinimumDissipation(AnisotropicMinimumDissipation):
 
     Parameters
     ----------
-    C : float
-        Poincare constant
-
-    ν_split : float
-        Viscosity splitting parameter. A viscous term with viscosity ν_split
-        is added to the LHS and subtracted from the RHS.
-
-    κ_split : float
-        Diffusivity splitting parameter. A diffusive term with diffusivity κ_split
-        is added to the LHS and subtracted from the RHS.
-
-    quasi_strain : float
-        A 'regularization' parameter that prevents the AMD eddy viscosity from being NaN.
-        Only use this with trivial initial conditions that lead to an AMD eddy viscosity of ν_sgs = 0/0.
-        quasi_strain has units of strain, and should be much smaller than resolved strain in non-quiescent
-        regions of the flow.
-
-    quasi_gradient : float
-        A 'regularization' parameter that prevents the AMD eddy diffusivity from being NaN.
-        See quasi_strain for caveats.
+    See AnisotropicMinimumDissipation.
     """
-    def __init__(self, C=1/12, ν_split=0, κ_split=0, quasi_strain=0, quasi_gradient=0):
-        AnisotropicMinimumDissipation.__init__(self, stratified=True, C=C, ν_split=0, κ_split=0, quasi_strain=quasi_strain,
-                                               quasi_gradient=quasi_gradient)
+    def __init__(self, **kwargs):
+        AnisotropicMinimumDissipation.__init__(self, stratified=True, **kwargs)

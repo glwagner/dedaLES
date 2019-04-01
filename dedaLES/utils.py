@@ -17,6 +17,11 @@ def min_spacing(model):
         Δmin.append(model.problem.domain.grid_spacing(axis))
     return np.min(np.array(Δmin))
 
+def substitute_max_functions(problem):
+    # Max function
+    problem.substitutions['hardmax(x)'] = "0.5 * (abs(x) + x)"
+    problem.substitutions['softmax(x, a)'] = "a * np.logaddexp(0, x/a)"
+
 def random_noise(domain, amplitude=1, seed=23):
     """Generate `domain`-spanning `amplitude` random noise with random seed `seed`."""
     rand = np.random.RandomState(seed=seed)
@@ -35,7 +40,7 @@ def add_parameters(problem, **params):
     for name, value in params.items():
         problem.parameters[name] = value
 
-def add_substitutions(problem, **substitutions):
+def add_substitutions(problem, substitutions):
     """
     Add substitutions to a dedalus problem programmatically.
     """
@@ -78,7 +83,7 @@ def bind_parameters(obj, **params):
 
 
 class TimeStepGizmo(CFL):
-    """ 
+    """
     Computes frequency-limited timestep from a set of frequencies, velocities, and diffusivities.
 
     Parameters
@@ -122,7 +127,7 @@ class TimeStepGizmo(CFL):
 
     def add_diffusivity(self, diffusivity):
         """Add an on-grid isotropic diffusivity."""
-        diff = FutureField.parse(diffusivity, self.solver.evaluator.vars, self.solver.domain)    
+        diff = FutureField.parse(diffusivity, self.solver.evaluator.vars, self.solver.domain)
         for axis in range(self.solver.domain.dim):
-            freq = diff / self.grid_spacings[axis]**2 
+            freq = diff / self.grid_spacings[axis]**2
             self.add_frequency(freq)

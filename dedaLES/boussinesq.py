@@ -106,7 +106,7 @@ class BoussinesqChannelFlow(ChannelFlow):
         add_closure_equations(problem, closure, tracers=['b'])
 
         # Custom substitutions
-        add_substitutions(problem, **substitutions)
+        add_substitutions(problem, substitutions)
 
         # Equations
         problem.add_equation(f"dt(u) - ν*(dx(ux) + dy(uy) + dz(uz)) + dx(p) - f*v - Lu_sgs = - u*ux - v*uy - w*uz + Nu_sgs")
